@@ -43,14 +43,17 @@ struct ShapeBase {
 	double distance = 0.0;
 	float size_mod = 1.0f;
 	float mass = 1.0f;
-	olc::vf2d size;
+	int size;
+	float rdegrees = 0.1f;
 };
 
 struct Triangle {
 	ShapeBase shapeb;
+	olc::vf2d center;
 	olc::vf2d pos;
 	olc::vf2d pos2;
 	olc::vf2d pos3;
+	std::vector<olc::vf2d> tcoords;
 };
 
 struct Square {
@@ -70,9 +73,9 @@ struct Circle {
 
 
 struct ShapeSet {
-	std::vector<Circle> vCircle;
-	std::vector<Square> vSquare;
-	std::vector<Triangle> vTriangle;
+	std::vector<Triangle> triangles;
+	std::vector<Circle> circles;
+	std::vector<Square> squares;
 };
 
 
@@ -80,43 +83,9 @@ struct ShapeSet {
 class SeedGen
 {
 public:
-	SeedGen(uint32_t x, uint32_t y)
+	SeedGen()
 	{
-		nProcGen = (x & 0xFFFF) << 16 | (y & 0xFFFF);
-		
-		clusterSize = rndInt(1, 20);
 
-		double distanceFromCluster = rndDouble(60.0, 200.0);
-		for (int i = 0; i < clusterSize; i++) {
-			distanceFromCluster += rndDouble(3.0, 100.0);
-			Triangle t;
-			Square s;
-			Circle c;
-
-			t.pos = {float(rndDouble(9.0, 10.0)), float(rndDouble(4.0, 5.0))};
-			t.pos2 = {float(rndDouble(9.0, 10.0)), float(rndDouble(4.0, 5.0))};
-			t.pos3 = {float(rndDouble(9.0, 10.0)), float(rndDouble(4.0, 5.0))};
-			t.shapeb.distance = distanceFromCluster;
-			t.shapeb.colour = shapeColours[rndInt(0, 8)];
-
-			distanceFromCluster += rndDouble(1.0, 4.0);
-			s.pos = {float(rndDouble(3.0, 10.0)), float(rndDouble(2.0, 8.0))};
-			s.size = {float(rndDouble(3.0, 10.0)), float(rndDouble(2.0, 8.0))};
-			s.shapeb.distance = distanceFromCluster;
-			s.shapeb.colour = shapeColours[rndInt(0, 8)];
-
-			distanceFromCluster += rndDouble(1.0, 4.0);
-			c.pos = {float(rndDouble(3.0, 10.0)), float(rndDouble(2.0, 8.0))};
-			c.diameter = rndDouble(0.2, 0.5);
-			c.mask = nProcGen * rndDouble(0.1, 0.7);
-			c.radius = float(rndDouble(1.0, 3.0));
-			c.shapeb.distance = distanceFromCluster;
-			c.shapeb.colour = shapeColours[rndInt(0, 8)];
-
-			cluster.vCircle.push_back(c);
-			cluster.vTriangle.push_back(t);
-			cluster.vSquare.push_back(s);
-		} 
 	}
 
 	~SeedGen()
@@ -125,10 +94,8 @@ public:
 	}
 
 public:
-	ShapeSet cluster;
 	int clusterSize;
-
-private:
+	const double PIEE = 3.14159265358979323846;
 	uint32_t nProcGen = 0;
 
 	double rndDouble(double min, double max)
@@ -155,6 +122,96 @@ private:
 		uint32_t m2 = (tmp >> 32) ^ tmp;
 		return m2;
 	}
+
+
+
+	std::vector<olc::vf2d> TriangleCoords(int length, olc::vf2d startp){
+		int height = length * sqrt(3) / 2;
+		std::vector<olc::vf2d> triangle_coords;
+		olc::vf2d a = startp;
+		olc::vf2d b = {startp.x+length, startp.y};
+		olc::vf2d c = {startp.x+(length/2), startp.y-height};
+		triangle_coords.push_back(a);
+		triangle_coords.push_back(b);
+		triangle_coords.push_back(c);
+		return triangle_coords;
+	};
+
+	olc::vi2d TriangleCenter(std::vector<olc::vf2d> trcoords){
+		//((x1 + x2 + x3) / 3, (y1 + y2 + y3) / 3)
+		olc::vf2d a = trcoords[0];
+		olc::vf2d b = trcoords[1];
+		olc::vf2d c = trcoords[2];
+		olc::vf2d centre = {((a.x + b.x + c.x)/3), ((a.y + b.y + c.y)/3)};
+		return centre;
+	};
+
+	std::vector<olc::vf2d> MoveTriangle(std::vector<olc::vf2d> trcoords, olc::vf2d newcentre){
+		//((x1 + x2 + x3) / 3, (y1 + y2 + y3) / 3)
+		olc::vf2d a = trcoords[0];
+		olc::vf2d b = trcoords[1];
+		olc::vf2d c = trcoords[2];
+		olc::vf2d oldcentre = {((a.x + b.x + c.x)/3), ((a.y + b.y + c.y)/3)};
+
+		float adiffx = a.x - oldcentre.x;
+		float adiffy = a.y - oldcentre.y;
+
+		float bdiffx = b.x - oldcentre.x;
+		float bdiffy = b.y - oldcentre.y;
+
+		float cdiffx = c.x - oldcentre.x;
+		float cdiffy = c.y - oldcentre.y;
+
+		olc::vf2d newa = {newcentre.x + adiffx, newcentre.y + adiffy};
+		olc::vf2d newb = {newcentre.x + bdiffx, newcentre.y + bdiffy};
+		olc::vf2d newc = {newcentre.x + cdiffx, newcentre.y + cdiffy};
+
+		std::vector<olc::vf2d> newtpos = {newa, newb, newc};
+		return newtpos;
+	};
+
+	std::vector<olc::vf2d> RotateTriangle(std::vector<olc::vf2d> trcoords, double degrees, olc::vf2d tric){
+		olc::vd2d a;
+		olc::vd2d b;
+		olc::vd2d c; 
+
+		double angleRad = degrees * (PIEE / 180);
+		float cosAngle = cos(angleRad);
+		float sinAngle = sin(angleRad);
+
+		
+		trcoords[0].x -= tric.x;
+		trcoords[0].y -= tric.y;
+		trcoords[1].x -= tric.x;
+		trcoords[1].y -= tric.y;
+		trcoords[2].x -= tric.x;
+		trcoords[2].y -= tric.y;
+
+		a.x = (trcoords[0].x * cosAngle) - (trcoords[0].y * sinAngle);
+		a.y = (trcoords[0].x * sinAngle) + (trcoords[0].y * cosAngle);
+		b.x = (trcoords[1].x * cosAngle) - (trcoords[1].y * sinAngle);
+		b.y = (trcoords[1].x * sinAngle) + (trcoords[1].y * cosAngle);
+		c.x = (trcoords[2].x * cosAngle) - (trcoords[2].y * sinAngle);
+		c.y = (trcoords[2].x * sinAngle) + (trcoords[2].y * cosAngle);
+
+
+		a.x += tric.x;
+		a.y += tric.y;
+		b.x += tric.x;
+		b.y += tric.y;
+		c.x += tric.x;
+		c.y += tric.y;
+
+		std::vector<olc::vf2d> newtpos;
+
+		newtpos.push_back(a);
+		newtpos.push_back(b);
+		newtpos.push_back(c);
+		return newtpos;
+	};
+
+
+
 };
 
 
@@ -164,12 +221,62 @@ class ScreenBackground : public olc::PixelGameEngine
 public:
 	ScreenBackground()
 	{
-		sAppName = "ScreenBackground";
+		sAppName = "Kaleidoscope";
 	}
 
 public:
+	SeedGen seed;
+	ShapeSet shapes;
+
 	bool OnUserCreate() override
 	{
+		SetPixelBlend(1.0);
+
+		
+
+		for (int x = 0; x < ScreenWidth(); x += 16) {
+			for (int y = 0; y < ScreenHeight(); y += 16) {
+				Triangle t;
+				// Circle c;
+				// Square sq;
+
+
+				//Triangle
+				int sidel = seed.rndInt(10,30);
+				t.shapeb.colour = shapeColours[seed.rndInt(0,8)];
+				t.tcoords = seed.TriangleCoords(sidel, {float(x), float(y)});
+				t.tcoords = seed.MoveTriangle(t.tcoords, {float(x), float(y)});	
+				t.pos = t.tcoords[0];
+				t.pos2 = t.tcoords[1];
+				t.pos3 = t.tcoords[2];
+				t.center = seed.TriangleCenter(t.tcoords);	
+				t.shapeb.rdegrees = 0.1f;
+
+		// 		//Squares
+		// 		Square sq;
+		// 		sq = star.cluster.vSquare[i];
+		// 		olc::vf2d sqpos = sq.pos;
+		// 		olc::vf2d sqsize = sq.size;
+		// 		uint32_t sqcol = sq.shapeb.colour;
+		//
+		// 		//Circle
+		// 		Circle c = star.cluster.vCircle[i];
+		// 		olc::vf2d cpos = c.pos;	
+		// 		float crad = c.radius;
+		// 		float cdiam = c.diameter;
+		// 		uint32_t ccol = c.shapeb.colour;
+				//
+
+
+
+				shapes.triangles.push_back(t);
+				// shapes.circles.push_back(c);
+				// shapes.squares.push_back(sq);
+
+				//Draw(x, y, olc::Pixel(rand() % 256, rand() % 256, rand() % 256));
+
+			}
+		}
 		return true;
 	}
 
@@ -183,79 +290,63 @@ public:
 		if (fElapsedTime <= 0.0001f) return true;
 		Clear(olc::BLACK);
 
-		//NOTE: MODULARS:
-		if (expand) {
-			pulse_freq += 0.00002f;
-		} else {
-			pulse_freq -= 0.00002f;
+
+// 		//NOTE: MODULARS:
+// 		if (expand) {
+// 			pulse_freq += 0.00002f;
+// 		} else {
+// 			pulse_freq -= 0.00002f;
+// 		}
+
+// 		if (pulse_freq >= 0.2f) {
+// 			expand = false;
+// 		}
+// 		if (pulse_freq <= 0.1f) {
+// 			expand = true;
+// 		}
+//
+// 		//NOTE: Human Input:
+//
+// 		if (GetKey(olc::Key::W).bHeld) vScreenBackgroundOffset.y -= 50.0f * fElapsedTime;
+// 		if (GetKey(olc::Key::S).bHeld) vScreenBackgroundOffset.y += 50.0f * fElapsedTime;
+// 		if (GetKey(olc::Key::A).bHeld) vScreenBackgroundOffset.x -= 50.0f * fElapsedTime;
+// 		if (GetKey(olc::Key::D).bHeld) vScreenBackgroundOffset.x += 50.0f * fElapsedTime;
+//
+// 		olc::vi2d mouse = { GetMouseX() / 16, GetMouseY() / 16 };
+// 		olc::vi2d galaxy_mouse = mouse + vScreenBackgroundOffset;
+		//
+	
+
+
+		for (Triangle &tri: shapes.triangles) {
+
+			tri.center.y += 0.1f;
+			//tri.tcoords = seed.MoveTriangle(tri.tcoords, tri.center);
+			//
+			tri.tcoords = seed.RotateTriangle(tri.tcoords, tri.shapeb.rdegrees, tri.center);
+			FillTriangle(
+				tri.tcoords[0], 
+				tri.tcoords[1], 
+				tri.tcoords[2], 
+				tri.shapeb.colour
+			);
+
 		}
 
-		if (pulse_freq >= 0.2f) {
-			expand = false;
-		}
-		if (pulse_freq <= 0.18f) {
-			expand = true;
-		}
-
-		//NOTE: Human Input:
-
-		if (GetKey(olc::Key::W).bHeld) vScreenBackgroundOffset.y -= 50.0f * fElapsedTime;
-		if (GetKey(olc::Key::S).bHeld) vScreenBackgroundOffset.y += 50.0f * fElapsedTime;
-		if (GetKey(olc::Key::A).bHeld) vScreenBackgroundOffset.x -= 50.0f * fElapsedTime;
-		if (GetKey(olc::Key::D).bHeld) vScreenBackgroundOffset.x += 50.0f * fElapsedTime;
-
-		olc::vi2d mouse = { GetMouseX() / 16, GetMouseY() / 16 };
-		olc::vi2d galaxy_mouse = mouse + vScreenBackgroundOffset;
 
 
 
-		//NOTE: Draw Screen Space
-		olc::vi2d screen_sector = { 0,0 };
-		int nSectorsX = ScreenWidth() / 16;
-		int nSectorsY = ScreenHeight() / 16;
-		for (screen_sector.x = 0; screen_sector.x < nSectorsX; screen_sector.x++)
-			for (screen_sector.y = 0; screen_sector.y < nSectorsY; screen_sector.y++)
-			{
-				uint32_t seed1 = (uint32_t)vScreenBackgroundOffset.x + (uint32_t)screen_sector.x;
-				uint32_t seed2 = (uint32_t)vScreenBackgroundOffset.y + (uint32_t)screen_sector.y;
-				
-				olc::vi2d sectorPos = {(screen_sector.x *16 + 8), (screen_sector.y *16 +8)};
-
-				SeedGen star(seed1, seed2);
-				for (int i = 0; i < star.clusterSize; i++) {
-					olc::vf2d sqpos = star.cluster.vSquare[i].pos;
-					olc::vf2d cpos = star.cluster.vCircle[i].pos;
-					olc::vf2d tpos = star.cluster.vTriangle[i].pos;
-					olc::vf2d tpos2 = star.cluster.vTriangle[i].pos2;
-					olc::vf2d tpos3 = star.cluster.vTriangle[i].pos3;
-
-					float crad = star.cluster.vCircle[i].radius;
-					float cdiam = star.cluster.vCircle[i].diameter;
-					uint32_t ccol = star.cluster.vCircle[i].shapeb.colour;
-
-					olc::vf2d sqsize = star.cluster.vSquare[i].size;
-					uint32_t sqcol = star.cluster.vSquare[i].shapeb.colour;
-
-					uint32_t tcol = star.cluster.vTriangle[i].shapeb.colour;
-
-					FillRect(sectorPos, sqsize, sqcol);
-					FillCircle(sectorPos, cdiam, ccol);
-					FillTriangleDecal(sectorPos, tpos2, tpos3, tcol);
-				}				
-				
-
-				// FillCircle(screen_sector.x * 16 + 8, screen_sector.y * 16 + 8, (int)star.shapeDiameter * pulse_freq, star.shapeColour);
-				// FillRect({screen_sector.x * 16 + 8, screen_sector.y * 16 + 8}, {10, 10}, star.shapeColour);
-				// FillTriangleDecal({float(screen_sector.x *16 +8), float(screen_sector.y *16 +8)}, {float(screen_sector.x *16 +9), float(screen_sector.y *16 +9)}, {float(screen_sector.x *16 +4), float(screen_sector.y *16 +4)}, star.shapeColour);
-			}
-		return true;
+ 		return true;
 	}
+
+
 };
+
 
 int main()
 {
 	ScreenBackground demo;
-	if (demo.Construct(512, 480, 2, 2, false, false))
+	if (demo.Construct(1024, 960, 1, 1))
 		demo.Start();
 	return 0;
 }
