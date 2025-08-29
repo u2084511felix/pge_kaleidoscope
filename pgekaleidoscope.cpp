@@ -1,6 +1,8 @@
 #define OLC_PGE_APPLICATION
 
 #include <pge/olcPixelGameEngine.h>
+#include <pge/extensions/olcPGEX_Graphics3D.h>
+
 //#include <pge/extensions/olcPGEX_TransformedView.h>
 #include <random>
 //olc::Pixel	shapeColour = olc::WHITE;
@@ -101,6 +103,8 @@ public:
 
 	int clusterSize;
 	const double PIEE = 3.14159265358979323846;
+
+	const double PI = 3.14159265358979323846;
 	uint32_t nProcGen = 0;
 
 public:
@@ -194,39 +198,38 @@ public:
 
 
 
-
-
-
-	void SpawnShapes() {
-		for (int x = 0; x < ScreenWidth(); x += 16) {
-			for (int y = 0; y < ScreenHeight(); y += 16) {
+	void SpawnShapes(int random_seed) {
+		for (int x = 0; x < ScreenWidth(); x += random_seed) {
+			for (int y = 0; y < ScreenHeight(); y += random_seed) {
 
 				int spawn = 1;
 
 				Triangle t;
 
-
 				t.shapeb.layer = layerEnum[rndInt(0,3)];
 				switch(t.shapeb.layer) {
 					case BG: 
-						t.sidelength = rndInt(10,20);
+						t.sidelength = rndInt(5,20);
+						t.shapeb.fill = 1;
+						spawn = rndInt(0, 3);
 						break;
 					case MID: 
-						t.sidelength = rndInt(20,30);
+						t.sidelength = rndInt(20,40);
+						t.shapeb.fill = rndInt(0,3);
+						spawn = rndInt(0, 5);
 						break;
 					case FG: 
-						t.sidelength = rndInt(50,60);
-						spawn = rndInt(0, 3);
+						t.sidelength = rndInt(40, 60);
+						t.shapeb.fill = rndInt(0,3);
+						spawn = rndInt(0, 4);
 						break;
 				}
 
-				t.sidelength = rndInt(10,30);
 				t.shapeb.colour = shapeColours[rndInt(0,8)];
 				t.pos = {float(x), float(y)};
 				//Make Equilateral: 
 				TriangleCoords(t);
 				TriangleCenter(t);
-				t.shapeb.fill = rndInt(0,3);
 				t.shapeb.rdegrees = rndDouble(0.1f, 3.0f);
 
 				if (spawn == 1) {
@@ -244,18 +247,23 @@ public:
 				switch(sq.shapeb.layer) {
 					case BG: 
 						sqsize = rndInt(1,4);
+						sq.shapeb.fill = 1;
+						spawn = rndInt(0, 2);
 						break;
 					case MID: 
 						sqsize = rndInt(5,10);
+						sq.shapeb.fill = rndInt(0,3);
+						spawn = rndInt(0, 10);
 						break;
 					case FG: 
 						sqsize = rndInt(20,40);
-						spawn = rndInt(0, 3);
+
+						sq.shapeb.fill = rndInt(0,2);
+						spawn = rndInt(0, 10);
 						break;
 				}
 
 				sq.size = {sqsize, sqsize};;
-				sq.shapeb.fill = rndInt(0,3);
 				sq.shapeb.colour = shapeColours[rndInt(0,8)];
 
 				if (spawn == 1) {
@@ -274,18 +282,23 @@ public:
 				switch(c.shapeb.layer) {
 					case BG: 
 						c.diameter = rndInt(1, 5);
+						c.shapeb.fill = 1;
+						spawn = rndInt(0, 3);
 						break;
 					case MID: 
 						c.diameter = rndInt(5, 10);
+
+						c.shapeb.fill = rndInt(0,3);
+						spawn = rndInt(0, 5);
 						break;
 					case FG: 
 						c.diameter = rndInt(20, 40);
-						spawn = rndInt(0, 3);
+						c.shapeb.fill = rndInt(0,2);
+						spawn = rndInt(0, 10);
 						break;
 				}
 	
 				c.radius = c.diameter / 2;
-				c.shapeb.fill = rndInt(0,3);
 
 				if (spawn == 1) {
 					circles.push_back(c);
@@ -333,7 +346,15 @@ public:
 	bool OnUserCreate() override
 	{
 		SetPixelBlend(1.0);
-		SpawnShapes();
+		SpawnShapes(rndInt(8, 32));
+
+		//void DrawPartialSprite(const olc::vi2d& pos, Sprite* sprite, const olc::vi2d& sourcepos, const olc::vi2d& size, uint32_t scale = 1, uint8_t flip = olc::Sprite::NONE);
+		//
+		//
+
+		//void PixelGameEngine::DrawPartialSprite(int32_t x, int32_t y, Sprite* sprite, int32_t ox, int32_t oy, int32_t w, int32_t h, uint32_t scale, uint8_t flip)
+
+
 		return true;
 	}
 
@@ -407,6 +428,42 @@ public:
 			}
 			ReSpawnRect(sq);
 		}
+
+
+		// Draws an area of a sprite at location (x,y), where the
+		// selected area is (ox,oy) to (ox+w,oy+h)
+		//
+		// void DrawPartialSprite(int32_t x, int32_t y, Sprite* sprite, int32_t ox, int32_t oy, int32_t w, int32_t h, uint32_t scale = 1, uint8_t flip = olc::Sprite::NONE);
+		// void DrawPartialSprite(const olc::vi2d& pos, Sprite* sprite, const olc::vi2d& sourcepos, const olc::vi2d& size, uint32_t scale = 1, uint8_t flip = olc::Sprite::NONE);
+
+		olc::Sprite* ref1 = GetDrawTarget();
+		olc::vf2d pos = {0, 0};
+		olc::vf2d sourcepos = {0,0};
+		olc::vi2d size = {ScreenWidth(), 200};
+		DrawPartialSprite(pos, ref1, sourcepos, size, 1, olc::Sprite::Flip::VERT);
+
+		olc::vf2d pos2 = {0,201};
+		olc::vf2d sourcepos2 = {0, 0};
+		olc::vi2d size2 = {ScreenWidth(), 600};
+		DrawPartialSprite(pos2, ref1, sourcepos2, size2, 1, olc::Sprite::Flip::VERT);
+
+		olc::vf2d pos3 = {0, 801};
+		olc::vf2d sourcepos3 = {0, 0};
+		olc::vi2d size3 = {500, 224};
+		DrawPartialSprite(pos3, ref1, sourcepos3, size3, 1, olc::Sprite::Flip::HORIZ);
+
+
+		// olc::vf2d pos4 = {0,0};
+		// olc::vf2d sourcepos4 = {0, 0};
+		// olc::vi2d size4 = {ScreenWidth(), (ScreenHeight()/2)-100};
+		// DrawPartialSprite(pos4, ref1, sourcepos4, size4, 1, olc::Sprite::Flip::VERT);
+
+		 // static void TexturedTriangle(int x1, int y1, float u1, float v1, float w1,
+			// int x2, int y2, float u2, float v2, float w2,
+			// int x3, int y3, float u3, float v3, float w3, olc::Sprite* spr);
+
+
+
  		return true;
 	}
 };
