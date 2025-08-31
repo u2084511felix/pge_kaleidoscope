@@ -14,6 +14,26 @@ constexpr uint32_t shapeColours[8] =
 	0xFFFFCB9D, 0xFF9F9FFF, 0xFF415EFF, 0xFF28199D
 };
 
+// enum ColourPalette { 
+//
+// 	GREY, DARK_GREY, VERY_DARK_GREY, RED, 
+// 	DARK_RED, VERY_DARK_RED, YELLOW, DARK_YELLOW,
+// 	VERY_DARK_YELLOW, GREEN, DARK_GREEN, VERY_DARK_GREEN,
+// 	CYAN, DARK_CYAN, VERY_DARK_CYAN, BLUE, 
+// 	DARK_BLUE, VERY_DARK_BLUE, MAGENTA, DARK_MAGENTA, 
+// 	VERY_DARK_MAGENTA, WHITE, BLACK 
+// };
+//
+// constexpr ColourPalette colourArray[23] = 
+// {
+// 	GREY, DARK_GREY, VERY_DARK_GREY, RED, 
+// 	DARK_RED, VERY_DARK_RED, YELLOW, DARK_YELLOW,
+// 	VERY_DARK_YELLOW, GREEN, DARK_GREEN, VERY_DARK_GREEN,
+// 	CYAN, DARK_CYAN, VERY_DARK_CYAN, BLUE, 
+// 	DARK_BLUE, VERY_DARK_BLUE, MAGENTA, DARK_MAGENTA, 
+// 	VERY_DARK_MAGENTA, WHITE, BLACK 
+// };
+
 enum ShapeEnum {
 	CIRCLE,
 	TRIANGLE,
@@ -53,6 +73,7 @@ struct ShapeBase {
 	float mass = 1.0f;
 	int size;
 	float rdegrees = 0.1f;
+	olc::vf2d speed;
 	int counterclockwiserotation;
 };
 
@@ -254,6 +275,7 @@ public:
 				}
 				t.shapeb.counterclockwiserotation = rndInt(0,12);
 
+				t.shapeb.speed = {0, (float)rndDouble(0.1, 0.3)};
 				t.shapeb.colour = shapeColours[rndInt(0,8)];
 				t.pos = {float(x), float(y)};
 				//Make Equilateral: 
@@ -272,6 +294,7 @@ public:
 				sq.pos = {float(x), float(y)};
 				sq.shapeb.layer = layerEnum[rndInt(0,3)];
 
+				sq.shapeb.speed = {0, (float)rndDouble(0.1, 0.3)};
 				float sqsize;
 				switch(sq.shapeb.layer) {
 					case BG: 
@@ -308,6 +331,7 @@ public:
 
 				c.shapeb.layer = layerEnum[rndInt(0,3)];
 
+				c.shapeb.speed = {0, (float)rndDouble(0.1, 0.3)};
 				switch(c.shapeb.layer) {
 					case BG: 
 						c.diameter = rndInt(1, 5);
@@ -347,8 +371,11 @@ public:
 		float min = std::min({triangle.pos.y, triangle.pos2.y, triangle.pos3.y});
 		min = triangle.center.y - min;
 
+		float newx = rndDouble(0, float(ScreenWidth()));
 		if (( triangle.center.y - min) >= ScreenHeight())  {
-			newc = {triangle.center.x, ((0 - min))};
+			//triangle.shapeb.speed.y = rndDouble(0.1, 0.3);
+			triangle.shapeb.colour = shapeColours[rndInt(0,8)];
+			newc = {newx, ((0 - min))};
 			MoveTriangle(triangle, newc);
 		}
 	}
@@ -356,7 +383,11 @@ public:
 	void ReSpawnCircle(Circle &circle) {
 		olc::vf2d newc = {0,0};
 		if (( circle.pos.y - circle.radius) >= ScreenHeight())  {
-			newc = {circle.pos.x, ((0 - circle.radius))};
+
+			//circle.shapeb.speed.y = rndDouble(0.1, 0.3);
+			float newx = rndDouble(0, float(ScreenWidth()));
+			circle.shapeb.colour = shapeColours[rndInt(0,8)];
+			newc = {newx, ((0 - circle.radius))};
 			circle.pos = newc;
 		}
 	}
@@ -365,7 +396,11 @@ public:
 	void ReSpawnRect(Square &square) {
 		olc::vf2d newc = {0,0};
 		if (( square.pos.y - square.size.y) >= ScreenHeight())  {
-			newc = {square.pos.x, ((0 - square.size.y))};
+
+			//square.shapeb.speed.y = rndDouble(0.1, 0.3);
+			float newx = rndDouble(0, float(ScreenWidth()));
+			square.shapeb.colour = shapeColours[rndInt(0,8)];
+			newc = {newx, ((0 - square.size.y))};
 			square.pos = newc;
 		}
 	}
@@ -376,7 +411,7 @@ public:
 	{
 		//SetPixelBlend(1.0);
 
-		viewtri.sidelength = 100;
+		viewtri.sidelength = 250;
 		viewtri.shapeb.fill = 1;
 		viewtri.shapeb.colour = shapeColours[2];
 		viewtri.pos = {(float)(ScreenWidth() / 2), (float)(ScreenHeight() / 2)};
@@ -474,8 +509,7 @@ public:
 		Clear(olc::BLACK);
 	
 		for (Triangle &tri: triangles) {	
-			olc::vf2d newc = {0, 0.3};
-			MoveTriangle(tri, tri.center + newc);
+			MoveTriangle(tri, tri.center + tri.shapeb.speed);
 			RotateTriangle(tri);
 
 			if (tri.shapeb.fill == 1) {
@@ -489,8 +523,8 @@ public:
 		}
 
 		for (Circle &c: circles) {
-			olc::vf2d newc = {0, 0.5};
-			c.pos += newc;
+			
+			c.pos += c.shapeb.speed;
 
 			if (c.shapeb.fill == 1) {
 				FillCircle(c.pos, c.radius, c.shapeb.colour);
@@ -501,8 +535,7 @@ public:
 		}
 
 		for (Square &sq: squares) {
-			olc::vf2d newc = {0, 0.3};
-			sq.pos += newc;
+			sq.pos += sq.shapeb.speed;
 			if (sq.shapeb.fill == 1) {
 				FillRect(sq.pos, sq.size, sq.shapeb.colour);
 			} else {
