@@ -108,8 +108,10 @@ public:
 	float pulse_freq = 0.0f;
 
 	olc::Sprite* Mask;
+	olc::Sprite* Mask2;
 	olc::Sprite* newsp;
 	olc::Decal* maskdecal;
+	olc::Decal* maskdecal2;
 	olc::vf2d mpos;
 	olc::vf2d msourcepos;
 	olc::vi2d msize;
@@ -374,7 +376,7 @@ public:
 	{
 		//SetPixelBlend(1.0);
 
-		viewtri.sidelength = 200;
+		viewtri.sidelength = 100;
 		viewtri.shapeb.fill = 1;
 		viewtri.shapeb.colour = shapeColours[2];
 		viewtri.pos = {(float)(ScreenWidth() / 2), (float)(ScreenHeight() / 2)};
@@ -392,7 +394,10 @@ public:
 		//msourcepos = {viewtri.pos.x, viewtri.pos.y-viewtri.height};
 
 		newsp = new olc::Sprite(ScreenWidth()/4, ScreenHeight()/4);	
+		//Mask2 = new olc::Sprite(ScreenWidth(), ScreenHeight());	
+
 		maskdecal = new olc::Decal(newsp);
+		maskdecal2 = new olc::Decal(Mask);
 		// for (int i = 0; i < newsp->width; i++) {
 		// 	for (int y = 0; y < newsp->height; y++){
 		// 		olc::Pixel sy = Mask->GetPixel(i,y);
@@ -442,6 +447,13 @@ public:
 // 			expand = true;
 // 		}
 // 		//NOTE: Human Input:
+
+
+
+
+
+
+
 
 
 
@@ -499,12 +511,31 @@ public:
 			ReSpawnRect(sq);
 		}
 
-		SetDrawTarget(nullptr);
 		//SetPixelMode(olc::Pixel::MASK); // Draw all pixels
+		//
 
-
-		//DrawDecal({0,0}, maskdecal); 
+		SetDrawTarget(nullptr);
+		//SetDrawTarget(Mask2);
 		maskdecal->Update();
+
+		//NOTE: Here follows terrible spaghetti code that should be put into structs, but I got carried away with adding more and more polygon decals.
+		// Too late to refactor now sorry ! 
+		//..............
+		//.............
+		//............
+		//...........
+		//..........
+		//.........
+		//........
+		//.......
+		//......
+		//.....
+		//....
+		//...
+		//..
+		//.
+
+
 
 		//Center
 		olc::vf2d cpos1 = viewtri.pos;
@@ -553,11 +584,9 @@ public:
 
 		std::vector<olc::vf2d> bc_textures = {{0,1}, {0.5,0.0}, {1,1}}; 
 		DrawPolygonDecal(maskdecal, bcpos, bc_textures);
+	
 
 
-		//Center
-		//DrawPolygonDecal(maskdecal, {viewtri.pos, viewtri.pos2, viewtri.pos3}, {{0,1}, {0.5,0.0}, {1,1}});
-		
 		//LeftBottom
 		olc::vf2d lbcpos1 = {bcpos2.x - (viewtri.sidelength), bcpos2.y};
 		olc::vf2d lbcpos2 = cpos1;
@@ -569,7 +598,6 @@ public:
 
 		std::vector<olc::vf2d> lbc_textures = {{1,1}, {0,1},{0.5,0.0}}; 
 		DrawPolygonDecal(maskdecal, lbcpos, lbc_textures);
-		
 
 		//RightBottomCenter
 		olc::vf2d rbcpos1 = bcpos2;
@@ -582,9 +610,6 @@ public:
 
 		std::vector<olc::vf2d> rbc_textures = {{0.5,0.0}, {1,1},{0,1}}; 
 		DrawPolygonDecal(maskdecal, rbcpos, rbc_textures);
-
-
-
 
 		//TopCenterLeft
 		olc::vf2d tclpos1 = lcpos3;
@@ -610,9 +635,6 @@ public:
 		std::vector<olc::vf2d> tcc_textures = {{0,1},{0.5,0.0},{1,1}}; 
 		DrawPolygonDecal(maskdecal, tccpos, tcc_textures);
 
-
-		//
-		//
 		//TopCentreRight
 		olc::vf2d tcrpos1 = cpos2;
 		olc::vf2d tcrpos2 = tccpos3;
@@ -624,10 +646,6 @@ public:
 
 		std::vector<olc::vf2d> tcr_textures = {{0.5,0.0}, {1,1},{0,1}}; 
 		DrawPolygonDecal(maskdecal, tcrpos, tcr_textures);
-
-
-
-
 
 		//LeftCentertop
 		olc::vf2d lctpos1 = {cpos1.x - viewtri.sidelength, cpos1.y};
@@ -641,8 +659,6 @@ public:
 		std::vector<olc::vf2d> lct_textures = {{0.5,0.0}, {1,1},{0,1}}; 
 		DrawPolygonDecal(maskdecal, lctpos, lct_textures);
 
-
-
 		//Leftcenterbottom
 		olc::vf2d lcbpos1 = lctpos1;
 		olc::vf2d lcbpos2 = lbcpos1;
@@ -655,8 +671,6 @@ public:
 		std::vector<olc::vf2d> lcb_textures = {{0.5,0.0}, {1,1},{0,1}}; 
 		DrawPolygonDecal(maskdecal, lcbpos, lcb_textures);
 
-
-
 		//Toptop
 		olc::vf2d ttpos1 = tccpos1;
 		olc::vf2d ttpos2 = {tccpos2.x, tccpos2.y-(viewtri.height*2)};
@@ -665,13 +679,12 @@ public:
 		ttpos.push_back(ttpos1);
 		ttpos.push_back(ttpos2);
 		ttpos.push_back(ttpos3);
-
 		//std::vector<olc::vf2d> tt_textures = {{0.5,0.0}, {1,1},{0,1}}; 
 		DrawPolygonDecal(maskdecal, ttpos, c_textures);
 
 
 
-		//Leftcenterbollom
+
 		olc::vf2d llpos1 = {lcbpos2.x - viewtri.sidelength, lcbpos2.y};
 		olc::vf2d llpos2 = lcbpos2;
 		olc::vf2d llpos3 = lcbpos1;
@@ -686,7 +699,7 @@ public:
 
 
 
-		//Leftcenterbollom
+
 		olc::vf2d rcrpos1 = cpos3;
 		olc::vf2d rcrpos2 = tcrpos3;
 		olc::vf2d rcrpos3 = {cpos3.x + viewtri.sidelength, cpos1.y};
@@ -699,7 +712,8 @@ public:
 		DrawPolygonDecal(maskdecal, rcrpos, rcr_textures);
 
 
-		//Leftcenterbollom
+
+
 		olc::vf2d rbbpos1 = cpos3;
 		olc::vf2d rbbpos2 = rbcpos3;
 		olc::vf2d rbbpos3 = rcrpos3;
@@ -712,7 +726,8 @@ public:
 		DrawPolygonDecal(maskdecal, rbbpos, rbb_textures);
 
 
-		//Leftcenterbollom
+
+
 		olc::vf2d rrpos1 = rbcpos3;
 		olc::vf2d rrpos2 = rcrpos3;
 		olc::vf2d rrpos3 = {rbcpos3.x + viewtri.sidelength, rbcpos3.y};
@@ -724,20 +739,305 @@ public:
 		std::vector<olc::vf2d> rr_textures = {{1,1},{0,1},{0.5,0.0}}; 
 		DrawPolygonDecal(maskdecal, rrpos, c_textures);
 
-		// DrawPolygonDecal(maskdecal, {viewtri.pos, viewtri.pos2, viewtri.pos3}, {{0,1}, {0.5,0.0}, {1,1}});
-		// //LeftCenter
-		// DrawPolygonDecal(maskdecal, {viewtri.pos, viewtri.pos2, {viewtri.pos.x-(viewtri.sidelength/2), viewtri.pos2.y}}, {{0,1}, {0.5,0.0}, {1,1}});
-		// //Rightcenter
-		// DrawPolygonDecal(maskdecal, {viewtri.pos3, viewtri.pos2, {viewtri.pos3.x+(viewtri.sidelength/2), viewtri.pos2.y}}, {{1,1}, {0.5,0.0}, {0,1}});
-		// //Bottomcenter
-		// DrawPolygonDecal(maskdecal, {viewtri.pos, {viewtri.pos2.x,viewtri.pos2.y+(viewtri.height*2)}, viewtri.pos3}, {{0,1}, {0.5,0.0}, {1,1}});
 
 
+
+		olc::vf2d reb1pos1 = rrpos2;
+		olc::vf2d reb1pos2 = rrpos3;
+		olc::vf2d reb1pos3 = {rrpos2.x + viewtri.sidelength, rrpos2.y};
+		std::vector<olc::vf2d> reb1pos;
+		reb1pos.push_back(reb1pos1);
+		reb1pos.push_back(reb1pos2);
+		reb1pos.push_back(reb1pos3);
+		
+		std::vector<olc::vf2d> reb1_textures = {{0.5,0.0},{1,1},{0,1}}; 
+		DrawPolygonDecal(maskdecal, reb1pos, reb1_textures);
+
+
+		olc::vf2d rem1pos1 = rrpos2;
+		olc::vf2d rem1pos2 = {reb1pos2.x, reb1pos2.y-(viewtri.height*2)};
+		olc::vf2d rem1pos3 = reb1pos3;
+		std::vector<olc::vf2d> rem1pos;
+		rem1pos.push_back(rem1pos1);
+		rem1pos.push_back(rem1pos2);
+		rem1pos.push_back(rem1pos3);
+		
+		std::vector<olc::vf2d> rem1_textures = {{0.5,0.0}, {1,1},{0,1},}; 
+		DrawPolygonDecal(maskdecal, rem1pos, rem1_textures);
+
+		olc::vf2d rem2pos1 = rcrpos2;
+		olc::vf2d rem2pos2 = rem1pos1;
+		olc::vf2d rem2pos3 = rem1pos2;
+		std::vector<olc::vf2d> rem2pos;
+		rem2pos.push_back(rem2pos1);
+		rem2pos.push_back(rem2pos2);
+		rem2pos.push_back(rem2pos3);
+		
+		std::vector<olc::vf2d> rem2_textures = { {0,1},{0.5,0.0},{1,1},}; 
+		DrawPolygonDecal(maskdecal, rem2pos, rem2_textures);
+
+
+		olc::vf2d rem3pos1 = rem2pos1;
+		olc::vf2d rem3pos2 = {rem2pos2.x, rem2pos2.y-(viewtri.height*2)};
+		olc::vf2d rem3pos3 = rem2pos3;
+		std::vector<olc::vf2d> rem3pos;
+		rem3pos.push_back(rem3pos1);
+		rem3pos.push_back(rem3pos2);
+		rem3pos.push_back(rem3pos3);
+		
+		std::vector<olc::vf2d> rem3_textures = { {0,1},{0.5,0.0},{1,1},}; 
+		DrawPolygonDecal(maskdecal, rem3pos, rem3_textures);
+
+		olc::vf2d rem4pos1 = tcrpos2;
+		olc::vf2d rem4pos2 = rem3pos1; //{rem2pos2.x, rem2pos2.y-(viewtri.height*2)};
+		olc::vf2d rem4pos3 = rem3pos2;
+		std::vector<olc::vf2d> rem4pos;
+		rem4pos.push_back(rem4pos1);
+		rem4pos.push_back(rem4pos2);
+		rem4pos.push_back(rem4pos3);
+		
+		std::vector<olc::vf2d> rem4_textures = { {1,1},{0,1},{0.5,0.0}}; 
+		DrawPolygonDecal(maskdecal, rem4pos, rem4_textures);
+
+		olc::vf2d ret1pos1 = rem4pos1;
+		olc::vf2d ret1pos2 = {rem4pos2.x, rem4pos2.y-(viewtri.height*2)};
+		olc::vf2d ret1pos3 = rem4pos3;
+		std::vector<olc::vf2d> ret1pos;
+		ret1pos.push_back(ret1pos1);
+		ret1pos.push_back(ret1pos2);
+		ret1pos.push_back(ret1pos3);
+		
+		std::vector<olc::vf2d> ret1_textures = { {1,1},{0,1},{0.5,0.0}}; 
+		DrawPolygonDecal(maskdecal, ret1pos, ret1_textures);
+
+		olc::vf2d ret2pos1 = ttpos2;
+		olc::vf2d ret2pos2 = ret1pos1;//{rem4pos2.x, rem4pos2.y-(viewtri.height*2)};
+		olc::vf2d ret2pos3 = ret1pos2;
+		std::vector<olc::vf2d> ret2pos;
+		ret2pos.push_back(ret2pos1);
+		ret2pos.push_back(ret2pos2);
+		ret2pos.push_back(ret2pos3);
+		
+		std::vector<olc::vf2d> ret2_textures = { {0.5,0.0},{1,1},{0,1}}; 
+		DrawPolygonDecal(maskdecal, ret2pos, ret2_textures);
+
+		olc::vf2d leb1pos1 = {llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d leb1pos2 = llpos1;//{rem4pos2.x, rem4pos2.y-(viewtri.height*2)};
+		olc::vf2d leb1pos3 = llpos3;
+		std::vector<olc::vf2d> leb1pos;
+		leb1pos.push_back(leb1pos1);
+		leb1pos.push_back(leb1pos2);
+		leb1pos.push_back(leb1pos3);
+		
+		std::vector<olc::vf2d> leb1_textures = {{1,1},{0,1}, {0.5,0.0}}; 
+		DrawPolygonDecal(maskdecal, leb1pos, leb1_textures);
+
+
+		olc::vf2d lem1pos1 = leb1pos1; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d lem1pos2 = {leb1pos2.x, leb1pos2.y-(viewtri.height*2)};
+		olc::vf2d lem1pos3 = leb1pos3;
+		std::vector<olc::vf2d> lem1pos;
+		lem1pos.push_back(lem1pos1);
+		lem1pos.push_back(lem1pos2);
+		lem1pos.push_back(lem1pos3);
+		
+		std::vector<olc::vf2d> lem1_textures = {{1,1},{0,1}, {0.5,0.0}}; 
+		DrawPolygonDecal(maskdecal, lem1pos, lem1_textures);
+
+
+		olc::vf2d lem2pos1 = lem1pos2; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d lem2pos2 = lem1pos3; 
+		//{leb1pos2.x, leb1pos2.y-(viewtri.height*2)};
+		olc::vf2d lem2pos3 = {lem1pos2.x+(viewtri.sidelength), lem1pos2.y};
+		std::vector<olc::vf2d> lem2pos;
+		lem2pos.push_back(lem2pos1);
+		lem2pos.push_back(lem2pos2);
+		lem2pos.push_back(lem2pos3);
+		
+		std::vector<olc::vf2d> lem2_textures = {{0,1},{0.5,0.0},{1,1}}; 
+		DrawPolygonDecal(maskdecal, lem2pos, lem2_textures);
+
+
+
+		olc::vf2d lem3pos1 = lem2pos1; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d lem3pos2 = {lem2pos2.x, lem2pos2.y-(viewtri.height*2)};
+		olc::vf2d lem3pos3 = lem2pos3;//{lem1pos2.x+(viewtri.sidelength), lem1pos2.y};
+		std::vector<olc::vf2d> lem3pos;
+		lem3pos.push_back(lem3pos1);
+		lem3pos.push_back(lem3pos2);
+		lem3pos.push_back(lem3pos3);
+		
+		std::vector<olc::vf2d> lem3_textures = {{0,1},{0.5,0.0},{1,1}}; 
+		DrawPolygonDecal(maskdecal, lem3pos, lem3_textures);
+
+
+		olc::vf2d lem4pos1 = lem3pos2; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d lem4pos2 = lem3pos3; //{lem2pos2.x, lem2pos2.y-(viewtri.height*2)};
+		olc::vf2d lem4pos3 = {lem3pos2.x+(viewtri.sidelength), lem3pos2.y};
+		std::vector<olc::vf2d> lem4pos;
+		lem4pos.push_back(lem4pos1);
+		lem4pos.push_back(lem4pos2);
+		lem4pos.push_back(lem4pos3);
+		
+		std::vector<olc::vf2d> lem4_textures = {{0.5,0.0},{1,1},{0,1}}; 
+		DrawPolygonDecal(maskdecal, lem4pos, lem4_textures);
+
+
+		olc::vf2d let1pos1 = lem4pos1; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d let1pos2 = {lem4pos2.x, lem4pos2.y-(viewtri.height*2)};
+		olc::vf2d let1pos3 = lem4pos3;
+
+		//{lem3pos2.x+(viewtri.sidelength), lem3pos2.y};
+		std::vector<olc::vf2d> let1pos;
+		let1pos.push_back(let1pos1);
+		let1pos.push_back(let1pos2);
+		let1pos.push_back(let1pos3);
+		
+		std::vector<olc::vf2d> let1_textures = {{0.5,0.0},{1,1},{0,1}}; 
+		DrawPolygonDecal(maskdecal, let1pos, let1_textures);
+
+
+		olc::vf2d let2pos1 = let1pos2; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d let2pos2 = let1pos3; //{lem4pos2.x, lem4pos2.y-(viewtri.height*2)};
+		olc::vf2d let2pos3 = ttpos2;
+
+		//{lem3pos2.x+(viewtri.sidelength), lem3pos2.y};
+		std::vector<olc::vf2d> let2pos;
+		let2pos.push_back(let2pos1);
+		let2pos.push_back(let2pos2);
+		let2pos.push_back(let2pos3);
+		
+		std::vector<olc::vf2d> let2_textures = {{1,1},{0,1}, {0.5,0.0}}; 
+		DrawPolygonDecal(maskdecal, let2pos, let2_textures);
+
+
+		//NOTE: Lower section
+		olc::vf2d bel1pos1 = llpos1; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d bel1pos2 = {llpos3.x, llpos3.y+(viewtri.height*2)};
+		olc::vf2d bel1pos3 = llpos2;
+
+		//{lem3pos2.x+(viewtri.sidelength), lem3pos2.y};
+		std::vector<olc::vf2d> bel1pos;
+		bel1pos.push_back(bel1pos1);
+		bel1pos.push_back(bel1pos2);
+		bel1pos.push_back(bel1pos3);
+		
+		std::vector<olc::vf2d> bel1_textures = {{0,1},{0.5,0.0},{1,1}}; 
+		DrawPolygonDecal(maskdecal, bel1pos, bel1_textures);
+
+
+
+
+		olc::vf2d bel2pos1 = bel1pos2; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d bel2pos2 = bel1pos3; //{llpos3.x, llpos3.y+(viewtri.height*2)};
+		olc::vf2d bel2pos3 = {bel1pos2.x+(viewtri.sidelength), bel1pos2.y};
+		std::vector<olc::vf2d> bel2pos;
+		bel2pos.push_back(bel2pos1);
+		bel2pos.push_back(bel2pos2);
+		bel2pos.push_back(bel2pos3);
+		
+		std::vector<olc::vf2d> bel2_textures = {{0.5,0.0},{1,1},{0,1}}; 
+		DrawPolygonDecal(maskdecal, bel2pos, bel2_textures);
+
+
+		olc::vf2d bel3pos1 = bel2pos2; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d bel3pos2 = bel2pos3; //{llpos3.x, llpos3.y+(viewtri.height*2)};
+		olc::vf2d bel3pos3 = lbcpos3;
+			//{bel1pos2.x+(viewtri.sidelength), bel1pos2.y};
+		std::vector<olc::vf2d> bel3pos;
+		bel3pos.push_back(bel3pos1);
+		bel3pos.push_back(bel3pos2);
+		bel3pos.push_back(bel3pos3);
+		
+		std::vector<olc::vf2d> bel3_textures = {{1,1},{0,1}, {0.5,0.0}}; 
+		DrawPolygonDecal(maskdecal, bel3pos, bel3_textures);
+
+
+		olc::vf2d becpos1 = bel3pos2; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d becpos2 = bel3pos3; //{llpos3.x, llpos3.y+(viewtri.height*2)};
+		olc::vf2d becpos3 = {bel3pos2.x+(viewtri.sidelength), bel3pos2.y};
+		std::vector<olc::vf2d> becpos;
+		becpos.push_back(becpos1);
+		becpos.push_back(becpos2);
+		becpos.push_back(becpos3);
+		
+		std::vector<olc::vf2d> bec_textures = {{0,1},{0.5,0.0},{1,1}}; 
+		DrawPolygonDecal(maskdecal, becpos, bec_textures);
+
+
+
+		olc::vf2d ber3pos1 = becpos2; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d ber3pos2 = becpos3; //{llpos3.x, llpos3.y+(viewtri.height*2)};
+
+		olc::vf2d ber3pos3 = rbcpos3;
+		//{bel3pos2.x+(viewtri.sidelength), bel3pos2.y};
+		std::vector<olc::vf2d> ber3pos;
+		ber3pos.push_back(ber3pos1);
+		ber3pos.push_back(ber3pos2);
+		ber3pos.push_back(ber3pos3);
+		
+		std::vector<olc::vf2d> ber3_textures = {{0.5,0.0},{0,1},{1,1}}; 
+		DrawPolygonDecal(maskdecal, ber3pos, ber3_textures);
+
+
+
+		olc::vf2d ber2pos1 = ber3pos2; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d ber2pos2 = ber3pos3; //{llpos3.x, llpos3.y+(viewtri.height*2)};
+
+		olc::vf2d ber2pos3 = {ber3pos2.x+(viewtri.sidelength), ber3pos2.y};
+		std::vector<olc::vf2d> ber2pos;
+		ber2pos.push_back(ber2pos1);
+		ber2pos.push_back(ber2pos2);
+		ber2pos.push_back(ber2pos3);
+		
+		std::vector<olc::vf2d> ber2_textures = {{1,1},{0,1}, {0.5,0.0}}; 
+		DrawPolygonDecal(maskdecal, ber2pos, ber2_textures);
+
+
+		olc::vf2d ber1pos1 = ber2pos2; //{llpos3.x-(viewtri.sidelength), llpos3.y};
+		olc::vf2d ber1pos2 = ber2pos3; //{llpos3.x, llpos3.y+(viewtri.height*2)};
+
+		olc::vf2d ber1pos3 = reb1pos2;
+		//{ber3pos2.x+(viewtri.sidelength), ber3pos2.y};
+		std::vector<olc::vf2d> ber1pos;
+		ber1pos.push_back(ber1pos1);
+		ber1pos.push_back(ber1pos2);
+		ber1pos.push_back(ber1pos3);
+		
+		std::vector<olc::vf2d> ber1_textures = {{0,1},{0.5,0.0},{1,1}}; 
+		DrawPolygonDecal(maskdecal, ber1pos, ber1_textures);
+
+
+
+		//Create a fractal like decal
+	// 	SetDrawTarget(nullptr);
+	// 	maskdecal2->Update();
+	// 	maskdecal2->UpdateSprite();
+	//
+	// 	Triangle sbigt;
+	// 
+	// 	//Leftcenterbollom
+	// 	sbigt.sidelength = viewtri.sidelength * 4;
+	// 	olc::vf2d bigtpos1 = llpos1;
+	// 	sbigt.pos = bigtpos1;
+	// 	//Make Equilateral: 
+	// 	TriangleCoords(sbigt);
+	// 	TriangleCenter(sbigt);
+	//
+	// 	olc::vf2d bigtpos2 = {ttpos2.x, ttpos2.y+(sbigt.height*2)};
+	// 	olc::vf2d bigtpos3 = rrpos3;
+	//
+	// 	std::vector<olc::vf2d> bigtpos;
+	// 	bigtpos.push_back(bigtpos1);
+	// 	bigtpos.push_back(bigtpos2);
+	// 	bigtpos.push_back(bigtpos3);
+	//
+	// 	std::vector<olc::vf2d> bigt_textures = {{1,1},{0.5,0.0},{0,1}}; 
+	// 	DrawPolygonDecal(maskdecal2, bigtpos, bigt_textures);
+
+		
 
 		//SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
-
-
-
 		// static void TexturedTriangle(int x1, int y1, float u1, float v1, float w1,
 		// 	int x2, int y2, float u2, float v2, float w2,
 		// 	int x3, int y3, float u3, float v3, float w3, olc::Sprite* spr);
