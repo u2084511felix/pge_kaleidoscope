@@ -35,6 +35,8 @@
 #include <pge/olcPixelGameEngine.h>
 #include <vector>
 #include <algorithm> 
+#include <cmath> 
+
 
 enum ShapeEnum {
 	CIRCLE,
@@ -108,9 +110,25 @@ struct Circle {
 	olc::vf2d pos;
 };
 
+struct Line {
+	olc::vf2d a = {0.0, 0.0};
+	olc::vf2d b = {0.0, 0.0};
+};
+
 struct Star {
 	ShapeBase shapeb;
-	olc::Renderable star;
+	olc::vf2d center;
+	// Innter radius
+	float radius = 0.0f;
+	// Outer radius
+	float oradius = 0.0f;
+	std::vector<olc::vf2d> inner;
+	std::vector<olc::vf2d> outer;
+	std::vector<Line> lines;
+	std::vector<olc::vf2d> texture;
+	std::vector<olc::vf2d> coords;
+	olc::Sprite* sprite;
+	olc::Decal* decal;
 };
 
 class Kaleidoscope : public olc::PixelGameEngine
@@ -125,6 +143,9 @@ public:
 	std::vector<Triangle> bgtriangles;
 	std::vector<Circle> circles;
 	std::vector<Square> squares;
+	std::vector<Star> stars;
+	olc::Sprite* starfield;
+	olc::Decal* starsdecal;
 
 	bool expand = 1;
 	float pulse_freq = 0.0f;
@@ -145,6 +166,7 @@ public:
 
 	Triangle baseTriangle;
 	Triangle* bt = &baseTriangle;
+	Triangle borderTriangle;
 
 
 	const int max_radius = 5; 
@@ -251,6 +273,106 @@ public:
 	    return (std::abs(h.x) + std::abs(h.y) + std::abs(-h.x - h.y)) / 2;
 	}
 
+
+	void DrawStar(Star &star) {
+
+		const int NUM_STAR_POINTS = 5;
+		const double CENTER_X = star.center.x;
+		const double CENTER_Y = star.center.y;
+		const double OUTER_RADIUS = star.radius * 2.5;
+		star.oradius = OUTER_RADIUS;
+		const double INNER_RADIUS = star.radius;  
+
+		const int totalVertices = NUM_STAR_POINTS * 2;
+
+		// Calculate the angle between each vertex.
+		const double angleStep = M_PI / NUM_STAR_POINTS;
+
+		// -90 degrees (pointing straight up). M_PI / 2 is 90 degrees in radians.
+		const double startingAngle = -M_PI / rndDouble(0, 12);
+		star.shapeb.rdegrees = startingAngle;
+
+		Line line;
+		for (int i = 0; i < totalVertices; ++i) {
+			// Alternate between the outer and inner radius.
+			// Even numbers (0, 2, 4...) are outer points.
+			// Odd numbers (1, 3, 5...) are inner points.
+			double currentRadius = (i % 2 == 0) ? OUTER_RADIUS : INNER_RADIUS;
+			// Calculate the angle for the current vertex.
+			double currentAngle = startingAngle + i * angleStep;
+			olc::vf2d newPoint;
+
+			newPoint.x = CENTER_X + currentRadius * cos(currentAngle);
+			newPoint.y = CENTER_Y + currentRadius * sin(currentAngle);
+			star.coords.push_back(newPoint);
+		}
+
+		for(size_t i = 0; i < star.coords.size(); ++i) {
+		    Line line;
+		    line.a = star.coords[i];
+		    line.b =  star.coords[(i + 1) % star.coords.size()];
+		    star.lines.push_back(line);
+		}
+		for (size_t i = 0; i < star.lines.size(); ++i) {
+			DrawLine(star.lines[i].a, star.lines[i].b, star.shapeb.colour);
+		}
+	}
+
+
+	void AnmiateStar(Star &star) {
+
+		star.center += star.shapeb.speed;
+
+		const int NUM_STAR_POINTS = 5;
+		const double CENTER_X = star.center.x;
+		const double CENTER_Y = star.center.y;
+		const double OUTER_RADIUS = star.radius * 2.5;
+		const double INNER_RADIUS = star.radius;  
+
+		const int totalVertices = NUM_STAR_POINTS * 2;
+
+		// Calculate the angle between each vertex.
+		const double angleStep = M_PI / NUM_STAR_POINTS;
+
+		if (star.shapeb.counterclockwiserotation &1) {	
+			star.shapeb.rdegrees -= rndDouble(0.001,0.005);
+		} else {
+
+			star.shapeb.rdegrees += rndDouble(0.001,0.005);
+		}
+
+
+		const double startingAngle = star.shapeb.rdegrees;
+		Line line;
+		star.coords.clear();
+		for (int i = 0; i < totalVertices; ++i) {
+			// Alternate between the outer and inner radius.
+			// Even numbers (0, 2, 4...) are outer points.
+			// Odd numbers (1, 3, 5...) are inner points.
+			double currentRadius = (i % 2 == 0) ? OUTER_RADIUS : INNER_RADIUS;
+			// Calculate the angle for the current vertex.
+			double currentAngle = startingAngle + i * angleStep;
+			olc::vf2d newPoint;
+
+			newPoint.x = CENTER_X + currentRadius * cos(currentAngle);
+			newPoint.y = CENTER_Y + currentRadius * sin(currentAngle);
+			star.coords.push_back(newPoint);
+		}
+		star.lines.clear();
+		for(size_t i = 0; i < star.coords.size(); ++i) {
+		    Line line;
+		    line.a = star.coords[i];
+		    line.b =  star.coords[(i + 1) % star.coords.size()];
+		    star.lines.push_back(line);
+		}
+		for (size_t i = 0; i < star.lines.size(); ++i) {
+			DrawLine(star.lines[i].a, star.lines[i].b, star.shapeb.colour);
+		}
+	}
+
+
+
+
 	void SpawnShapes(int random_seed) {
 		for (int x = 0; x < ScreenWidth(); x += random_seed) {
 			for (int y = 0; y < ScreenHeight(); y += random_seed) {
@@ -343,7 +465,38 @@ public:
 				if (spawn == 1) {
 					circles.push_back(c);
 				}
+
 				spawn=1;
+
+				Star starr;
+
+				starr.shapeb.layer = layerEnum[rndInt(0,3)];
+				switch(starr.shapeb.layer) {
+					case BG:
+						starr.radius = rndDouble(1,5);
+						starr.shapeb.fill = rndInt(0,3);
+						spawn = rndInt(0, 12);
+						break;
+					case MID: 
+						starr.radius = rndDouble(6,10);
+						starr.shapeb.fill = rndInt(0,2);
+						spawn = rndInt(0, 36);
+						break;
+					case FG: 
+						starr.radius = rndDouble(10,20);
+						starr.shapeb.fill = rndInt(0,2);
+						spawn = rndInt(0, 72);
+						break;
+				}
+
+				if (spawn == 1) {
+					starr.shapeb.counterclockwiserotation = rndInt(0,12);
+					starr.shapeb.speed = {0, (float)rndDouble(0.01, 0.04)};
+					starr.center = {float(x), float(y)};
+					starr.shapeb.colour = randomColour(); 	
+					DrawStar(starr);
+					stars.push_back(starr);
+				}
 			}
 		}
 
@@ -370,6 +523,17 @@ public:
 			circle.pos = newc;
 		}
 	}
+
+	void ReSpawnStar(Star &star) {
+		olc::vf2d newc = {0,0};
+		if (( star.center.y - star.oradius) >= ScreenHeight())  {
+			float newx = rndDouble(0, float(ScreenWidth()));
+			star.shapeb.colour = randomColour();
+			newc = {newx, ((0 - star.oradius))};
+			star.center = newc;
+		}
+	}
+
 
 	void ReSpawnRect(Square &square) {
 		olc::vf2d newc = {0,0};
@@ -399,9 +563,12 @@ public:
 		bt->width = bt->height / 2.0f;
 		bt->x = {(float)(ScreenWidth() / 2), (float)(ScreenHeight() / 2)};
 		cetrepos = {(float)(ScreenWidth() / 2), (float)(ScreenHeight() / 2)};
+		bt->shapeb.colour = randomColour();
 		TriangleCoords(*bt);
 		TriangleCenter(*bt);
 		MoveTriangle(*bt, bt->x);
+
+
 
 		for (int radius = 0; radius <= max_radius; ++radius) {
 			for (int q = -radius; q <= radius; ++q) {
@@ -451,6 +618,8 @@ public:
 		SpawnShapes(rndInt(8, 32));
 		Mask = GetDrawTarget();
 		newsp = new olc::Sprite(ScreenWidth()/4, ScreenHeight()/4);	
+		starfield =  new olc::Sprite(ScreenWidth(), ScreenHeight());
+		starsdecal = new olc::Decal(starfield);
 		maskdecal = new olc::Decal(newsp);
 		return true;
 	}
@@ -458,15 +627,15 @@ public:
 	bool OnUserUpdate(float fElapsedTime) override
 	{
 		Clear(olc::BLACK);	
+
 		SetDrawTarget(newsp);
-		Clear(olc::BLACK);
 	
+		Clear(olc::BLACK);	
 		for (Triangle &tri: bgtriangles) {	
 			MoveTriangle(tri, tri.center + tri.shapeb.speed);
 			RotateTriangle(tri);
 
 			if (tri.shapeb.fill == 1) {
-
 				FillTriangle(tri.x, tri.y, tri.z, tri.shapeb.colour);
 			} else {
 				DrawTriangle(tri.x, tri.y, tri.z, tri.shapeb.colour);
@@ -496,14 +665,23 @@ public:
 			}
 			ReSpawnRect(sq);
 		}
-		SetPixelMode(olc::Pixel::MASK); // Draw all pixels
 
+		for (Star &star: stars) {
+			AnmiateStar(star);
+			ReSpawnStar(star);
+		}
+
+
+		
 		SetDrawTarget(nullptr);
+
 		maskdecal->Update();
 
 		for (Triangle &t: triangles) {
 			DrawPolygonDecal(maskdecal, t.coords, t.texture);
 		}
+
+
  		return true;
 	}
 };
