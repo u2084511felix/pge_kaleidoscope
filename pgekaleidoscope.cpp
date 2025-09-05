@@ -37,7 +37,6 @@
 #include <algorithm> 
 #include <cmath> 
 
-
 enum ShapeEnum {
 	CIRCLE,
 	TRIANGLE,
@@ -68,7 +67,6 @@ constexpr Layer layerEnum[3] = {
 	FG
 };
 
-
 struct ShapeBase {
 	olc::Pixel colour;
 	Layer layer = layerEnum[0];
@@ -94,13 +92,14 @@ struct Triangle {
 	std::vector<olc::vf2d> texture;
 };
 
-
 struct Square {
 	ShapeBase shapeb;
-	olc::vf2d pos;
+	olc::vf2d pos;	
+	olc::vf2d center;
 	olc::vf2d size;
+	olc::Sprite* sprite;
+	olc::Decal* decal;
 };
-
 
 struct Circle {
 	ShapeBase shapeb;
@@ -167,7 +166,6 @@ public:
 	Triangle baseTriangle;
 	Triangle* bt = &baseTriangle;
 	Triangle borderTriangle;
-
 
 	const int max_radius = 5; 
 
@@ -273,6 +271,37 @@ public:
 	    return (std::abs(h.x) + std::abs(h.y) + std::abs(-h.x - h.y)) / 2;
 	}
 
+
+	void DrawSquare(Square &sq) {
+		//SetDrawTarget(sq.sprite);
+
+		if (sq.shapeb.counterclockwiserotation &1) {	
+			sq.shapeb.rdegrees -= rndDouble(0.001,0.005);
+		} else {
+
+			sq.shapeb.rdegrees += rndDouble(0.001,0.005);
+		}
+		if (sq.shapeb.fill == 1) {
+			FillRect(sq.pos, sq.size, sq.shapeb.colour);
+		} else {
+			DrawRect(sq.pos, sq.size, sq.shapeb.colour);
+		}	
+
+		// SetDrawTarget(nullptr);
+		//
+		// SetDecalMode(olc::DecalMode::ADDITIVE);
+		// //NOTE: Buggy rotated decal??
+		// //DrawRotatedDecal(sq.pos, sq.decal, 0.1f, {0,0}, {0.1f,0.0f});
+		// DrawDecal(sq.pos, sq.decal, { 1.0f,1.0f });
+
+	}
+
+	// void DrawSquare(Square &sq) {
+	// 	sq.decal->Update();	
+	// 	SetDecalMode(olc::DecalMode::ADDITIVE);
+	// 	DrawDecal(sq.pos, sq.decal, { 1.0f,1.0f });
+	//
+	// }
 
 	void DrawStar(Star &star) {
 
@@ -432,9 +461,13 @@ public:
 						spawn = rndInt(0, 36);
 						break;
 				}
-				sq.size = {sqsize, sqsize};;
+				sq.size = {sqsize, sqsize};
+				sq.center = {sq.pos.x + (sq.size.x/2), sq.pos.y-(sq.size.x/2)};
 				sq.shapeb.colour = randomColour();
 				if (spawn == 1) {
+					sq.sprite = new olc::Sprite(sq.size.x+1, sq.size.y+1);
+					sq.decal = new olc::Decal(sq.sprite);
+					DrawSquare(sq);
 					squares.push_back(sq);
 				}
 				spawn=1;
@@ -568,8 +601,6 @@ public:
 		TriangleCenter(*bt);
 		MoveTriangle(*bt, bt->x);
 
-
-
 		for (int radius = 0; radius <= max_radius; ++radius) {
 			for (int q = -radius; q <= radius; ++q) {
 				for (int r = -radius; r <= radius; ++r) {
@@ -629,7 +660,7 @@ public:
 		Clear(olc::BLACK);	
 
 		SetDrawTarget(newsp);
-	
+
 		Clear(olc::BLACK);	
 		for (Triangle &tri: bgtriangles) {	
 			MoveTriangle(tri, tri.center + tri.shapeb.speed);
@@ -658,19 +689,15 @@ public:
 
 		for (Square &sq: squares) {
 			sq.pos += sq.shapeb.speed;
-			if (sq.shapeb.fill == 1) {
-				FillRect(sq.pos, sq.size, sq.shapeb.colour);
-			} else {
-				DrawRect(sq.pos, sq.size, sq.shapeb.colour);
-			}
+			DrawSquare(sq);
 			ReSpawnRect(sq);
 		}
+
 
 		for (Star &star: stars) {
 			AnmiateStar(star);
 			ReSpawnStar(star);
 		}
-
 
 		
 		SetDrawTarget(nullptr);
