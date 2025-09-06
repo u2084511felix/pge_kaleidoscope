@@ -30,9 +30,31 @@
 
 */
 
+
+/*TODO:
+ * 2. Add live video feed as kaleidoscope source.
+ * 3. Add his-res space telescope images that scroll through viewpane to kaleidoscope.
+ * 4. Experiement with different shapes and types of kaleidoscope (using sources foudn in bookmarked research).
+ * 5. Add sound spectrum visual feedback to shapes and kaleidoscope effects.
+ * 6. Add glasslike wireframe to kaleidoscope edges with a clamping texture sampling method.
+ * 7. Figure out how to optimise shape animations.
+*/
+
+
 #define OLC_PGE_APPLICATION
 
 #include <pge/olcPixelGameEngine.h>
+#include <pge/extensions/olcPGEX_TransformedView.h>
+#include <pge/extensions/olcPGEX_Sound.h>
+#include <pge/extensions/olcPGEX_Graphics2D.h>
+
+//#include <pge/extensions/olcPGEX_Shaders.h>
+
+
+
+
+
+
 #include <vector>
 #include <algorithm> 
 #include <cmath> 
@@ -114,6 +136,69 @@ struct Line {
 	olc::vf2d b = {0.0, 0.0};
 };
 
+
+
+//NOTE: From MaGetzUb discord message. Utility for saving sprite to a filepath on linux using libpng.
+inline bool SaveSprite(olc::Sprite* sprite, const std::string& path) {
+
+    std::vector<png_bytep> rows(sprite->height);
+    for(size_t i = 0; i < rows.size(); i++) {
+        rows[i] = reinterpret_cast<png_bytep>(sprite->GetData() + sprite->width*i) ;
+    }
+
+    auto onClose = [](FILE* fp) -> void { fclose(fp); };
+    auto file = std::unique_ptr<FILE, decltype(onClose)>( 
+        fopen(path.c_str(), "wb"), 
+        onClose
+    );
+
+    if(file == nullptr) {
+        std::cerr << "Error opening file\n";
+        return false;
+    }
+
+    png_structp writeStruct = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!writeStruct) {
+        std::cerr << "Error creating PNG write struct\n";
+        return false;
+    }
+
+    png_infop infoStruct = png_create_info_struct(writeStruct);
+    if (!infoStruct) {
+        std::cerr << "Error creating PNG info struct\n";
+        png_destroy_write_struct(&writeStruct, NULL);
+        return false;
+    }
+
+    if (setjmp(png_jmpbuf(writeStruct))) {
+        std::cerr << "Error during PNG creation\n";
+        png_destroy_write_struct(&writeStruct, &infoStruct);
+        return false;
+    }
+
+    png_init_io(writeStruct, file.get());
+
+    png_set_IHDR(
+        writeStruct, 
+        infoStruct, 
+        sprite->width, sprite->height,
+        8, 
+        PNG_COLOR_TYPE_RGBA, 
+        PNG_INTERLACE_NONE,
+        PNG_COMPRESSION_TYPE_DEFAULT, 
+        PNG_FILTER_TYPE_DEFAULT
+    );
+
+    png_write_info(writeStruct, infoStruct);
+    png_write_image(writeStruct, rows.data());
+    png_write_end(writeStruct, NULL);
+    png_destroy_write_struct(&writeStruct, &infoStruct);
+
+    return true;
+
+}
+
+
 struct Star {
 	ShapeBase shapeb;
 	olc::vf2d center;
@@ -143,13 +228,12 @@ public:
 	std::vector<Circle> circles;
 	std::vector<Square> squares;
 	std::vector<Star> stars;
-	olc::Sprite* starfield;
-	olc::Decal* starsdecal;
+	olc::Sprite* overlaysprite;
+	olc::Decal* overlaydecal;
 
 	bool expand = 1;
 	float pulse_freq = 0.0f;
 
-	olc::Sprite* Mask;
 	olc::Sprite* newsp;
 	olc::Decal* maskdecal;
 	olc::vf2d cetrepos;
@@ -272,9 +356,30 @@ public:
 	}
 
 
-	void DrawSquare(Square &sq) {
-		//SetDrawTarget(sq.sprite);
+	void DrawSquareDecal(Square &sq) {
+		SetDrawTarget(sq.sprite);
 
+		if (sq.shapeb.counterclockwiserotation &1) {	
+			sq.shapeb.rdegrees -= rndDouble(0.001,0.005);
+		} else {
+
+			sq.shapeb.rdegrees += rndDouble(0.001,0.005);
+		}
+		if (sq.shapeb.fill == 1) {
+			FillRect({0,0}, sq.size, sq.shapeb.colour);
+		} else {
+			DrawRect({0,0}, sq.size, sq.shapeb.colour);
+		}	
+
+		SetDrawTarget(nullptr);
+		// SetDecalMode(olc::DecalMode::ADDITIVE);
+		// //NOTE: Buggy rotated decal??
+		// //DrawRotatedDecal(sq.pos, sq.decal, 0.1f, {0,0}, {0.1f,0.0f});
+		// DrawDecal(sq.pos, sq.decal, { 1.0f,1.0f });
+	}
+
+
+	void DrawSquare(Square &sq) {
 		if (sq.shapeb.counterclockwiserotation &1) {	
 			sq.shapeb.rdegrees -= rndDouble(0.001,0.005);
 		} else {
@@ -285,15 +390,7 @@ public:
 			FillRect(sq.pos, sq.size, sq.shapeb.colour);
 		} else {
 			DrawRect(sq.pos, sq.size, sq.shapeb.colour);
-		}	
-
-		// SetDrawTarget(nullptr);
-		//
-		// SetDecalMode(olc::DecalMode::ADDITIVE);
-		// //NOTE: Buggy rotated decal??
-		// //DrawRotatedDecal(sq.pos, sq.decal, 0.1f, {0,0}, {0.1f,0.0f});
-		// DrawDecal(sq.pos, sq.decal, { 1.0f,1.0f });
-
+		}
 	}
 
 	// void DrawSquare(Square &sq) {
@@ -646,22 +743,31 @@ public:
 				}
 			}
 		}
+
 		SpawnShapes(rndInt(8, 32));
-		Mask = GetDrawTarget();
 		newsp = new olc::Sprite(ScreenWidth()/4, ScreenHeight()/4);	
-		starfield =  new olc::Sprite(ScreenWidth(), ScreenHeight());
-		starsdecal = new olc::Decal(starfield);
 		maskdecal = new olc::Decal(newsp);
+		
+
+		overlaysprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
+		overlaydecal = new olc::Decal(overlaysprite);
 		return true;
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+
 		Clear(olc::BLACK);	
+		SetPixelMode(olc::Pixel::Mode::ALPHA);
 
 		SetDrawTarget(newsp);
 
-		Clear(olc::BLACK);	
+		SetPixelMode(olc::Pixel::Mode::ALPHA);
+		Clear(olc::BLANK);
+
+
+
+
 		for (Triangle &tri: bgtriangles) {	
 			MoveTriangle(tri, tri.center + tri.shapeb.speed);
 			RotateTriangle(tri);
@@ -687,27 +793,47 @@ public:
 			ReSpawnCircle(c);
 		}
 
+		for (Star &star: stars) {
+			AnmiateStar(star);
+			ReSpawnStar(star);
+		}
+
+
 		for (Square &sq: squares) {
 			sq.pos += sq.shapeb.speed;
 			DrawSquare(sq);
 			ReSpawnRect(sq);
 		}
 
-
-		for (Star &star: stars) {
-			AnmiateStar(star);
-			ReSpawnStar(star);
-		}
-
-		
 		SetDrawTarget(nullptr);
+
+		SetPixelMode(olc::Pixel::Mode::ALPHA);
 
 		maskdecal->Update();
 
 		for (Triangle &t: triangles) {
 			DrawPolygonDecal(maskdecal, t.coords, t.texture);
+//			DrawTriangle(t.x, t.y, t.z, olc::VERY_DARK_RED);
 		}
 
+		//DrawTriangle(triangles[0].x, triangles[0].y, triangles[0].z, olc::DARK_RED);
+
+		overlaydecal->UpdateSprite();
+		
+		if(GetKey(olc::Key::INS).bPressed) {
+			std::chrono::time_point<std::chrono::system_clock> tp1;
+			tp1 = std::chrono::system_clock::now();
+
+			time_t now;
+			time(&now);
+			std::string dateandtime = ctime(&now);
+
+			std::string filename = "./Screenshots/pge_kaleidoscope_";
+			filename += dateandtime;
+			std::replace(filename.begin(), filename.end(),' ','_');
+
+			SaveSprite(overlaysprite, filename);
+		}
 
  		return true;
 	}
