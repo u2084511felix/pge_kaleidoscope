@@ -117,6 +117,7 @@ struct Triangle {
 struct Square {
 	ShapeBase shapeb;
 	olc::vf2d pos;	
+	float diagonal;
 	olc::vf2d center;
 	olc::vf2d size;
 	olc::Sprite* sprite;
@@ -228,6 +229,26 @@ public:
 	std::vector<Circle> circles;
 	std::vector<Square> squares;
 	std::vector<Star> stars;
+
+
+	olc::Sprite* squaresprite;
+	olc::Decal* squaresdecal;
+	olc::Sprite* trianglesprite;
+	olc::Decal* trianglesdecal;
+	olc::Sprite* starsprite;
+	olc::Decal* starsdecal;
+	olc::Sprite* circlesprite;
+	olc::Decal* circlesdecal;
+
+
+	olc::Sprite* bgsprite;
+	olc::Decal* bgdecal;
+	olc::Sprite* midsprite;
+	olc::Decal* middecal;
+	olc::Sprite* fgsprite;
+	olc::Decal* fgdecal;
+
+
 	olc::Sprite* overlaysprite;
 	olc::Decal* overlaydecal;
 
@@ -356,41 +377,41 @@ public:
 	}
 
 
-	void DrawSquareDecal(Square &sq) {
-		SetDrawTarget(sq.sprite);
-
-		if (sq.shapeb.counterclockwiserotation &1) {	
-			sq.shapeb.rdegrees -= rndDouble(0.001,0.005);
-		} else {
-
-			sq.shapeb.rdegrees += rndDouble(0.001,0.005);
-		}
+	void DrawSquareSprite(Square &sq) {
+		SetDrawTarget(sq.sprite);	
+		Clear(olc::BLANK);
+		SetPixelMode(olc::Pixel::Mode::ALPHA);
 		if (sq.shapeb.fill == 1) {
 			FillRect({0,0}, sq.size, sq.shapeb.colour);
 		} else {
 			DrawRect({0,0}, sq.size, sq.shapeb.colour);
 		}	
-
 		SetDrawTarget(nullptr);
-		// SetDecalMode(olc::DecalMode::ADDITIVE);
-		// //NOTE: Buggy rotated decal??
-		// //DrawRotatedDecal(sq.pos, sq.decal, 0.1f, {0,0}, {0.1f,0.0f});
-		// DrawDecal(sq.pos, sq.decal, { 1.0f,1.0f });
+	}
+
+
+	void DrawSquareDecal(Square &sq) {			
+		if (sq.shapeb.counterclockwiserotation &1) {	
+			sq.shapeb.rdegrees -= rndDouble(0.001,0.005);
+		} else {
+			sq.shapeb.rdegrees += rndDouble(0.001,0.005);
+		}
+		sq.decal->Update();	
+		DrawRotatedDecal(sq.pos, sq.decal, sq.shapeb.rdegrees, {0.0f,0.0f}, {1.0f,1.0f});
 	}
 
 
 	void DrawSquare(Square &sq) {
-		if (sq.shapeb.counterclockwiserotation &1) {	
-			sq.shapeb.rdegrees -= rndDouble(0.001,0.005);
-		} else {
 
-			sq.shapeb.rdegrees += rndDouble(0.001,0.005);
-		}
 		if (sq.shapeb.fill == 1) {
 			FillRect(sq.pos, sq.size, sq.shapeb.colour);
 		} else {
 			DrawRect(sq.pos, sq.size, sq.shapeb.colour);
 		}
+	}
+
+	void RotateSquare(Square &sq){
+
 	}
 
 	// void DrawSquare(Square &sq) {
@@ -444,7 +465,6 @@ public:
 		}
 	}
 
-
 	void AnmiateStar(Star &star) {
 
 		star.center += star.shapeb.speed;
@@ -484,6 +504,7 @@ public:
 			newPoint.y = CENTER_Y + currentRadius * sin(currentAngle);
 			star.coords.push_back(newPoint);
 		}
+
 		star.lines.clear();
 		for(size_t i = 0; i < star.coords.size(); ++i) {
 		    Line line;
@@ -495,9 +516,6 @@ public:
 			DrawLine(star.lines[i].a, star.lines[i].b, star.shapeb.colour);
 		}
 	}
-
-
-
 
 	void SpawnShapes(int random_seed) {
 		for (int x = 0; x < ScreenWidth(); x += random_seed) {
@@ -558,13 +576,18 @@ public:
 						spawn = rndInt(0, 36);
 						break;
 				}
-				sq.size = {sqsize, sqsize};
-				sq.center = {sq.pos.x + (sq.size.x/2), sq.pos.y-(sq.size.x/2)};
-				sq.shapeb.colour = randomColour();
-				if (spawn == 1) {
-					sq.sprite = new olc::Sprite(sq.size.x+1, sq.size.y+1);
+
+				if (spawn == 1) {	
+					sq.size = {sqsize, sqsize};
+					sq.center = {sq.pos.x + (sq.size.x/2), sq.pos.y-(sq.size.x/2)};
+					sq.diagonal =  sqrt((sq.size.x * sq.size.x) + (sq.size.y * sq.size.y));
+
+					sq.shapeb.counterclockwiserotation = rndInt(0,12);
+					sq.sprite = new olc::Sprite(sq.diagonal, sq.diagonal);
+					sq.shapeb.colour = randomColour();
+
+					DrawSquareSprite(sq);
 					sq.decal = new olc::Decal(sq.sprite);
-					DrawSquare(sq);
 					squares.push_back(sq);
 				}
 				spawn=1;
@@ -664,7 +687,6 @@ public:
 		}
 	}
 
-
 	void ReSpawnRect(Square &square) {
 		olc::vf2d newc = {0,0};
 		if (( square.pos.y - square.size.y) >= ScreenHeight())  {
@@ -744,10 +766,27 @@ public:
 			}
 		}
 
+		squaresprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
+		trianglesprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
+		circlesprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
+		starsprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
+
+		bgsprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
+		midsprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
+		fgsprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
+
+		squaresdecal = new olc::Decal(squaresprite);
+		trianglesdecal = new olc::Decal(trianglesprite);
+		circlesdecal = new olc::Decal(circlesprite);
+		starsdecal = new olc::Decal(starsprite);
+
+		bgdecal = new olc::Decal(bgsprite);
+		middecal = new olc::Decal(midsprite);
+		fgdecal = new olc::Decal(fgsprite);
+
 		SpawnShapes(rndInt(8, 32));
 		newsp = new olc::Sprite(ScreenWidth()/4, ScreenHeight()/4);	
-		maskdecal = new olc::Decal(newsp);
-		
+		maskdecal = new olc::Decal(newsp);	
 
 		overlaysprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
 		overlaydecal = new olc::Decal(overlaysprite);
@@ -756,17 +795,14 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-
-		Clear(olc::BLACK);	
+		SetDrawTarget(nullptr);
+		Clear(olc::BLANK);	
 		SetPixelMode(olc::Pixel::Mode::ALPHA);
+
 
 		SetDrawTarget(newsp);
-
-		SetPixelMode(olc::Pixel::Mode::ALPHA);
 		Clear(olc::BLANK);
-
-
-
+		SetPixelMode(olc::Pixel::Mode::ALPHA);
 
 		for (Triangle &tri: bgtriangles) {	
 			MoveTriangle(tri, tri.center + tri.shapeb.speed);
@@ -777,14 +813,11 @@ public:
 			} else {
 				DrawTriangle(tri.x, tri.y, tri.z, tri.shapeb.colour);
 			}
-
 			ReSpawnShape(tri);
 		}
 
 		for (Circle &c: circles) {
-			
 			c.pos += c.shapeb.speed;
-
 			if (c.shapeb.fill == 1) {
 				FillCircle(c.pos, c.radius, c.shapeb.colour);
 			} else {
@@ -798,51 +831,54 @@ public:
 			ReSpawnStar(star);
 		}
 
-
 		for (Square &sq: squares) {
 			sq.pos += sq.shapeb.speed;
-			DrawSquare(sq);
+			DrawSquareDecal(sq);
 			ReSpawnRect(sq);
+			//WARN: This breaks rendering in PGETinker but not on desktop version...
+			//sq.decal->UpdateSprite();
 		}
 
-		SetDrawTarget(nullptr);
 
-		SetPixelMode(olc::Pixel::Mode::ALPHA);
+		SetDrawTarget(nullptr);
+		Clear(olc::BLANK);
+		SetPixelMode(olc::Pixel::Mode::ALPHA);	
+
 
 		maskdecal->Update();
 
+
 		for (Triangle &t: triangles) {
+			//NOTE: This does not work because decals can't be drawn to a setdrawtarget sprite (other than the default nullptr).
+			// Solution apprently is in pgex shaders... tbc.
+			// TODO: Look into pgex shaders.
 			DrawPolygonDecal(maskdecal, t.coords, t.texture);
-//			DrawTriangle(t.x, t.y, t.z, olc::VERY_DARK_RED);
+			DrawTriangle(t.x, t.y, t.z, olc::VERY_DARK_RED);
 		}
 
-		//DrawTriangle(triangles[0].x, triangles[0].y, triangles[0].z, olc::DARK_RED);
-
 		overlaydecal->UpdateSprite();
-		
+
 		if(GetKey(olc::Key::INS).bPressed) {
 			std::chrono::time_point<std::chrono::system_clock> tp1;
 			tp1 = std::chrono::system_clock::now();
-
 			time_t now;
 			time(&now);
 			std::string dateandtime = ctime(&now);
-
 			std::string filename = "./Screenshots/pge_kaleidoscope_";
 			filename += dateandtime;
+			filename += ".png";
 			std::replace(filename.begin(), filename.end(),' ','_');
-
 			SaveSprite(overlaysprite, filename);
 		}
-
  		return true;
 	}
 };
+
+
 int main()
 {
 	Kaleidoscope demo;
 	if (demo.Construct(1024, 960, 1, 1))
-
 		demo.Start();
 	return 0;
 }
