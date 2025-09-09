@@ -98,9 +98,8 @@ constexpr Layer layerEnum[3] = {
 };
 
 struct DecalShader {
-	std::unique_ptr<olc::Decal> source = nullptr;
-	std::unique_ptr<olc::Decal> target = nullptr;
-
+	olc::Decal* target=nullptr;
+	olc::Decal* source=nullptr;
 	olc::Shade shader = {};
 	olc::Effect effect = {};
 	olc::EffectConfig fxconfig = {
@@ -289,10 +288,17 @@ public:
 	olc::Decal* source_decal;
 	olc::Decal* target_decal;
 
-	DecalShader kaleidoscopeshader;
-	DecalShader sqshader;
-	DecalShader bgshader;
+	DecalShader squareds;
+	
 
+	olc::Shade shader = {};
+	olc::Effect effect = {};
+	olc::EffectConfig fxconfig = {
+		DEFAULT_VS,
+		DEFAULT_PS,
+		1,
+		1
+	};
 
 	olc::vf2d uvA = {0.0f, 1.0f};
 	olc::vf2d uvB = {1.0f, 1.0f};
@@ -424,15 +430,14 @@ public:
 	}
 
 
-	void DrawSquareDecal(Square &sq, DecalShader &ds) {			
+	void DrawSquareDecal(Square &sq) {			
 		if (sq.shapeb.counterclockwiserotation &1) {	
 			sq.shapeb.rdegrees -= rndDouble(0.001,0.005);
 		} else {
 			sq.shapeb.rdegrees += rndDouble(0.001,0.005);
 		}
 		sq.decal->Update();	
-		ds.shader.DrawDecal(sq.pos, sq.decal);
-		//DrawRotatedDecal(sq.pos, sq.decal, sq.shapeb.rdegrees, {0.0f,0.0f}, {1.0f,1.0f});
+		DrawRotatedDecal(sq.pos, sq.decal, sq.shapeb.rdegrees, {0.0f,0.0f}, {1.0f,1.0f});
 	}
 
 
@@ -748,7 +753,7 @@ public:
 
 	bool OnUserCreate() override
 	{
-		//SetPixelBlend(1.0);
+		SetPixelBlend(1.0);
 
 		uv_sets = {
 		    {uvA, uvB, uvC},
@@ -821,15 +826,16 @@ public:
 		overlaysprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
 		overlaydecal = new olc::Decal(overlaysprite);
 
-		bgshader.source = std::make_unique<olc::Decal>(new olc::Sprite(ScreenWidth(), ScreenHeight()));
-		sqshader.source = std::make_unique<olc::Decal>(new olc::Sprite(ScreenWidth(), ScreenHeight()));
-		kaleidoscopeshader.source = std::make_unique<olc::Decal>(new olc::Sprite(ScreenWidth(), ScreenHeight()));
-
-
 		squaresprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
 		squaresdecal = new olc::Decal(squaresprite);
 
+		squareds.effect = squareds.shader.MakeEffect(fxconfig);
+		squareds.target = overlaydecal;
+		squareds.source = squaresdecal;
 
+		squareds.shader.SetSourceDecal(squareds.source);
+		squareds.shader.SetTargetDecal(squareds.target);
+		squareds.shader.Start(&squareds.effect);	
 
 
 		SpawnShapes(rndInt(8, 32));
@@ -839,8 +845,8 @@ public:
 	bool OnUserUpdate(float fElapsedTime) override
 	{
 		SetDrawTarget(nullptr);
-		Clear(olc::BLACK);	
-		SetPixelMode(olc::Pixel::Mode::MASK);
+		// Clear(olc::BLANK);	
+		// SetPixelMode(olc::Pixel::Mode::ALPHA);
 
 
 		SetDrawTarget(newsp);
@@ -874,45 +880,45 @@ public:
 			ReSpawnStar(star);
 		}
 	
-		SetDrawTarget(overlaysprite);
-		Clear(olc::BLACK);
 		for (Square &sq: squares) {
 			sq.pos += sq.shapeb.speed;
 			sq.decal->Update();
 
-			DrawSquareDecal(sq, squareds);
+			DrawSquareDecal(sq);
 			ReSpawnRect(sq);
 
 			//WARN: This breaks rendering in PGETinker but not on desktop version...
 			//sq.decal->UpdateSprite();
 		}
-
-
-		overlaydecal->Update();
-
+		
 
 
 		SetDrawTarget(nullptr);
-		Clear(olc::BLACK);
-		// SetPixelMode(olc::Pixel::Mode::ALPHA);	
+		Clear(olc::BLANK);
+		SetPixelMode(olc::Pixel::Mode::ALPHA);	
 
-		//maskdecal->Update();
+		maskdecal->Update();
 
 		for (Triangle &t: triangles) {
 			//NOTE: This does not work because decals can't be drawn to a setdrawtarget sprite (other than the default nullptr).
 			// Solution apprently is in pgex shaders... tbc.
+			// TODO: Look into pgex shaders.
 
 			DrawPolygonDecal(maskdecal, t.coords, t.texture);
-			// TODO: Look into pgex shaders.
 
 			//DrawPolygonDecal(source_decal, t.coords, t.texture);
 			DrawTriangle(t.x, t.y, t.z, olc::VERY_DARK_RED);
 		}
 
-
-
 		overlaydecal->UpdateSprite();
 		squaresdecal->Update();
+
+
+		if(GetKey(olc::Key::NP1).bHeld) {
+			Clear(olc::BLACK);
+			squareds.shader.DrawPolygonDecal(overlaydecal, triangles[0].coords, triangles[0].texture, {olc::WHITE, olc::RED});
+		}
+
 
 		if(GetKey(olc::Key::INS).bPressed) {
 			std::chrono::time_point<std::chrono::system_clock> tp1;
