@@ -55,7 +55,7 @@
 
 #define OLC_GFX_OPENGL33
 #define OLC_PGE_APPLICATION
-#include "pge/olcPixelGameEngine.h"
+#include "olcPixelGameEngine.h"
 
 #define OLC_PGEX_SHADERS
 #include <pge/extensions/olcPGEX_Shaders.h>
