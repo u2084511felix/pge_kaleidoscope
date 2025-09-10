@@ -88,28 +88,25 @@ enum Layer {
 	FG
 };
 
-
-
-
 constexpr Layer layerEnum[3] = {
 	BG,
 	MID,
 	FG
 };
 
-struct DecalShader {
-	std::unique_ptr<olc::Decal> source = nullptr;
-	std::unique_ptr<olc::Decal> target = nullptr;
-
-	olc::Shade shader = {};
-	olc::Effect effect = {};
-	olc::EffectConfig fxconfig = {
-		DEFAULT_VS,
-		DEFAULT_PS,
-		1,
-		1
-	};
-};
+// struct DecalShader {
+// 	std::unique_ptr<olc::Decal> source = nullptr;
+// 	std::unique_ptr<olc::Decal> target = nullptr;
+//
+// 	olc::Shade shader = {};
+// 	olc::Effect effect = {};
+// 	olc::EffectConfig fxconfig = {
+// 		DEFAULT_VS,
+// 		DEFAULT_PS,
+// 		1,
+// 		1
+// 	};
+// };
 
 
 struct ShapeBase {
@@ -145,7 +142,19 @@ struct Square {
 	olc::vf2d size;
 	olc::Sprite* sprite;
 	olc::Decal* decal;
+};
 
+struct QuadSquare {
+	ShapeBase shapeb;
+	float height;
+	float width;
+	olc::vf2d center;
+	olc::vf2d pos1;
+	olc::vf2d pos2;
+	olc::vf2d pos3;
+	olc::vf2d pos4;
+	std::vector<olc::vf2d> coords;
+	std::vector<olc::vf2d> texture;
 };
 
 struct Circle {
@@ -160,9 +169,6 @@ struct Line {
 	olc::vf2d a = {0.0, 0.0};
 	olc::vf2d b = {0.0, 0.0};
 };
-
-
-
 
 //NOTE: From MaGetzUb discord message. Utility for saving sprite to a filepath on linux using libpng.
 inline bool SaveSprite(olc::Sprite* sprite, const std::string& path) {
@@ -257,24 +263,11 @@ public:
 	std::vector<Triangle> bgtriangles;
 	std::vector<Circle> circles;
 	std::vector<Square> squares;
+
+	std::vector<QuadSquare> quadsquares;
 	std::vector<Star> stars;
 
 
-	olc::Sprite* squaresprite;
-	olc::Decal* squaresdecal;
-	olc::Sprite* trianglesprite;
-	olc::Decal* trianglesdecal;
-	olc::Sprite* starsprite;
-	olc::Decal* starsdecal;
-	olc::Sprite* circlesprite;
-	olc::Decal* circlesdecal;
-
-	olc::Sprite* bgsprite;
-	olc::Decal* bgdecal;
-	olc::Sprite* midsprite;
-	olc::Decal* middecal;
-	olc::Sprite* fgsprite;
-	olc::Decal* fgdecal;
 
 	olc::Sprite* overlaysprite;
 	olc::Decal* overlaydecal;
@@ -285,13 +278,6 @@ public:
 	olc::Sprite* newsp;
 	olc::Decal* maskdecal;
 	olc::vf2d cetrepos;
-
-	olc::Decal* source_decal;
-	olc::Decal* target_decal;
-
-	DecalShader kaleidoscopeshader;
-	DecalShader sqshader;
-	DecalShader bgshader;
 
 
 	olc::vf2d uvA = {0.0f, 1.0f};
@@ -406,55 +392,58 @@ public:
 		triangle.z = c;
 	};
 
+	void MoveQuadSquare(QuadSquare &square, olc::vf2d newcentre){
+		square.pos1 = (square.pos1 - square.center) + newcentre;
+		square.pos2 = (square.pos2 - square.center) + newcentre;
+		square.pos3 = (square.pos3 - square.center) + newcentre;
+		square.pos4 = (square.pos4 - square.center) + newcentre;
+		square.center = newcentre;
+	};
+
+	void RotateSquare(QuadSquare &square){
+		olc::vd2d a;
+		olc::vd2d b;
+		olc::vd2d c; 
+		olc::vd2d d; 
+
+		double angleRad = square.shapeb.rdegrees * (PIEE / 180);
+
+		float cosAngle = cos(angleRad);
+		float sinAngle = sin(angleRad);
+		if (square.shapeb.counterclockwiserotation &1) {
+			sinAngle *= -1;
+		}
+
+		square.pos1 -= square.center;
+		square.pos2 -= square.center;
+		square.pos3 -= square.center;
+		square.pos4 -= square.center;
+
+		a.x = (square.pos1.x * cosAngle) - (square.pos1.y * sinAngle);
+		a.y = (square.pos1.x * sinAngle) + (square.pos1.y * cosAngle);
+		b.x = (square.pos2.x * cosAngle) - (square.pos2.y * sinAngle);
+		b.y = (square.pos2.x * sinAngle) + (square.pos2.y * cosAngle);
+		c.x = (square.pos3.x * cosAngle) - (square.pos3.y * sinAngle);
+		c.y = (square.pos3.x * sinAngle) + (square.pos3.y * cosAngle);
+		d.x = (square.pos4.x * cosAngle) - (square.pos4.y * sinAngle);
+		d.y = (square.pos4.x * sinAngle) + (square.pos4.y * cosAngle);
+
+		a += square.center;
+		b += square.center;
+		c += square.center;
+		d += square.center;
+
+		square.pos1 = a;
+		square.pos2 = b;
+		square.pos3 = c;
+		square.pos4 = d;
+	};
+
 	int hex_distance(olc::vi2d h) {
 	    return (std::abs(h.x) + std::abs(h.y) + std::abs(-h.x - h.y)) / 2;
 	}
 
 
-	void DrawSquareSprite(Square &sq) {
-		SetDrawTarget(sq.sprite);	
-		Clear(olc::BLANK);
-		SetPixelMode(olc::Pixel::Mode::ALPHA);
-		if (sq.shapeb.fill == 1) {
-			FillRect({0,0}, sq.size, sq.shapeb.colour);
-		} else {
-			DrawRect({0,0}, sq.size, sq.shapeb.colour);
-		}	
-		SetDrawTarget(nullptr);
-	}
-
-
-	void DrawSquareDecal(Square &sq, DecalShader &ds) {			
-		if (sq.shapeb.counterclockwiserotation &1) {	
-			sq.shapeb.rdegrees -= rndDouble(0.001,0.005);
-		} else {
-			sq.shapeb.rdegrees += rndDouble(0.001,0.005);
-		}
-		sq.decal->Update();	
-		ds.shader.DrawDecal(sq.pos, sq.decal);
-		//DrawRotatedDecal(sq.pos, sq.decal, sq.shapeb.rdegrees, {0.0f,0.0f}, {1.0f,1.0f});
-	}
-
-
-	void DrawSquare(Square &sq) {
-
-		if (sq.shapeb.fill == 1) {
-			FillRect(sq.pos, sq.size, sq.shapeb.colour);
-		} else {
-			DrawRect(sq.pos, sq.size, sq.shapeb.colour);
-		}
-	}
-
-	void RotateSquare(Square &sq){
-
-	}
-
-	// void DrawSquare(Square &sq) {
-	// 	sq.decal->Update();	
-	// 	SetDecalMode(olc::DecalMode::ADDITIVE);
-	// 	DrawDecal(sq.pos, sq.decal, { 1.0f,1.0f });
-	//
-	// }
 
 	void DrawStar(Star &star) {
 
@@ -589,8 +578,50 @@ public:
 				}
 				spawn=1;
 
-				Square sq;
-				sq.pos = {float(x), float(y)};
+				// Square sq;
+				// sq.pos = {float(x), float(y)};
+				// sq.shapeb.layer = layerEnum[rndInt(0,3)];
+				// sq.shapeb.speed = {0, (float)rndDouble(0.1, 0.2)};
+				// float sqsize;
+				// switch(sq.shapeb.layer) {
+				// 	case BG: 
+				// 		sqsize = rndInt(1,4);
+				// 		sq.shapeb.fill = 1;
+				// 		spawn = rndInt(0, 6);
+				// 		break;
+				// 	case MID: 
+				// 		sqsize = rndInt(5,10);
+				// 		sq.shapeb.fill = rndInt(0,3);
+				// 		spawn = rndInt(0, 18);
+				// 		break;
+				// 	case FG: 
+				// 		sqsize = rndInt(30,50);
+				// 		sq.shapeb.fill = rndInt(0,2);
+				// 		spawn = rndInt(0, 36);
+				// 		break;
+				// }
+				//
+				// if (spawn == 1) {	
+				// 	sq.size = {sqsize, sqsize};
+				// 	sq.center = {sq.pos.x + (sq.size.x/2), sq.pos.y-(sq.size.x/2)};
+				// 	sq.diagonal =  sqrt((sq.size.x * sq.size.x) + (sq.size.y * sq.size.y));
+				//
+				// 	sq.shapeb.counterclockwiserotation = rndInt(0,12);
+				// 	sq.sprite = new olc::Sprite(sq.diagonal, sq.diagonal);
+				// 	sq.shapeb.colour = randomColour();
+				//
+				// 	DrawSquareSprite(sq);
+				// 	sq.decal = new olc::Decal(sq.sprite);
+				//
+				//
+				//
+				// 	squares.push_back(sq);
+				// }
+				// spawn=1;
+				
+
+				QuadSquare sq;
+				sq.pos1 = {float(x), float(y)};
 				sq.shapeb.layer = layerEnum[rndInt(0,3)];
 				sq.shapeb.speed = {0, (float)rndDouble(0.1, 0.2)};
 				float sqsize;
@@ -613,22 +644,21 @@ public:
 				}
 
 				if (spawn == 1) {	
-					sq.size = {sqsize, sqsize};
-					sq.center = {sq.pos.x + (sq.size.x/2), sq.pos.y-(sq.size.x/2)};
-					sq.diagonal =  sqrt((sq.size.x * sq.size.x) + (sq.size.y * sq.size.y));
+					sq.width = sqsize;
+					sq.height = sqsize;
+
+					sq.pos2 = {sq.pos1.x + sqsize, sq.pos1.y};
+					sq.pos3 = {sq.pos1.x, sq.pos1.y + sqsize};
+					sq.pos4 = {sq.pos2.x, sq.pos3.y};
+					sq.center = {sq.pos1.x + (sqsize/2), sq.pos1.y-(sqsize/2)};
 
 					sq.shapeb.counterclockwiserotation = rndInt(0,12);
-					sq.sprite = new olc::Sprite(sq.diagonal, sq.diagonal);
 					sq.shapeb.colour = randomColour();
-
-					DrawSquareSprite(sq);
-					sq.decal = new olc::Decal(sq.sprite);
-
-
-
-					squares.push_back(sq);
+					quadsquares.push_back(sq);
 				}
 				spawn=1;
+
+				
 
 				Circle c;
 				c.pos = {float(x), float(y)};
@@ -702,6 +732,19 @@ public:
 			triangle.shapeb.colour = randomColour();
 			newc = {newx, ((0 - min))};
 			MoveTriangle(triangle, newc);
+		}
+	}
+
+
+	void RespawnQuadSquare(QuadSquare &sq) {
+		olc::vf2d newc = {0,0};
+		float min = std::min({sq.pos1.y, sq.pos2.y, sq.pos3.y, sq.pos4.y});
+		min = sq.center.y - min;
+		float newx = rndDouble(0, float(ScreenWidth()));
+		if (( sq.center.y - min) >= ScreenHeight())  {
+			sq.shapeb.colour = randomColour();
+			newc = {newx, ((0 - min))};
+			MoveQuadSquare(sq, newc);
 		}
 	}
 
@@ -821,17 +864,6 @@ public:
 		overlaysprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
 		overlaydecal = new olc::Decal(overlaysprite);
 
-		bgshader.source = std::make_unique<olc::Decal>(new olc::Sprite(ScreenWidth(), ScreenHeight()));
-		sqshader.source = std::make_unique<olc::Decal>(new olc::Sprite(ScreenWidth(), ScreenHeight()));
-		kaleidoscopeshader.source = std::make_unique<olc::Decal>(new olc::Sprite(ScreenWidth(), ScreenHeight()));
-
-
-		squaresprite = new olc::Sprite(ScreenWidth(), ScreenHeight());
-		squaresdecal = new olc::Decal(squaresprite);
-
-
-
-
 		SpawnShapes(rndInt(8, 32));
 		return true;
 	}
@@ -841,7 +873,6 @@ public:
 		SetDrawTarget(nullptr);
 		Clear(olc::BLACK);	
 		SetPixelMode(olc::Pixel::Mode::MASK);
-
 
 		SetDrawTarget(newsp);
 		Clear(olc::BLANK);
@@ -873,46 +904,36 @@ public:
 			AnmiateStar(star);
 			ReSpawnStar(star);
 		}
-	
-		SetDrawTarget(overlaysprite);
-		Clear(olc::BLACK);
-		for (Square &sq: squares) {
-			sq.pos += sq.shapeb.speed;
-			sq.decal->Update();
 
-			DrawSquareDecal(sq, squareds);
-			ReSpawnRect(sq);
 
-			//WARN: This breaks rendering in PGETinker but not on desktop version...
-			//sq.decal->UpdateSprite();
+		for (QuadSquare &sq: quadsquares) {
+			MoveQuadSquare(sq, sq.center + sq.shapeb.speed);
+			RotateSquare(sq);
+			if (sq.shapeb.fill == 1) {
+				FillQuadRect(sq.pos1, sq.pos2, sq.pos3, sq.pos4, sq.shapeb.colour);
+			} else {
+				DrawQuadRect(sq.pos1, sq.pos2, sq.pos3, sq.pos4, sq.shapeb.colour);
+			}
+			RespawnQuadSquare(sq);
 		}
-
-
-		overlaydecal->Update();
-
 
 
 		SetDrawTarget(nullptr);
 		Clear(olc::BLACK);
+
+
+		overlaydecal->Update();
+
 		// SetPixelMode(olc::Pixel::Mode::ALPHA);	
 
-		//maskdecal->Update();
+		maskdecal->Update();
 
 		for (Triangle &t: triangles) {
-			//NOTE: This does not work because decals can't be drawn to a setdrawtarget sprite (other than the default nullptr).
-			// Solution apprently is in pgex shaders... tbc.
-
 			DrawPolygonDecal(maskdecal, t.coords, t.texture);
-			// TODO: Look into pgex shaders.
-
-			//DrawPolygonDecal(source_decal, t.coords, t.texture);
 			DrawTriangle(t.x, t.y, t.z, olc::VERY_DARK_RED);
 		}
 
-
-
 		overlaydecal->UpdateSprite();
-		squaresdecal->Update();
 
 		if(GetKey(olc::Key::INS).bPressed) {
 			std::chrono::time_point<std::chrono::system_clock> tp1;
