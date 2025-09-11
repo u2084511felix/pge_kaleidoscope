@@ -32,25 +32,11 @@
 
 /*TODO:
  * 2. Add live video feed as kaleidoscope source.
- * 3. Add his-res space telescope images that scroll through viewpane to kaleidoscope.
  * 4. Experiement with different shapes and types of kaleidoscope (using sources foudn in bookmarked research).
  * 5. Add sound spectrum visual feedback to shapes and kaleidoscope effects.
  * 6. Add glasslike wireframe to kaleidoscope edges with a clamping texture sampling method.
  * 7. Figure out how to optimise shape animations.
 */
-
-
-
-// #define OLC_PGE_OPENGL 
-// #define OLC_GFX_OPENGL33
-//
-//#define OLC_PLATFORM_X11
-// #define OLC_PGEX_SHADERS
-// #define OLC_PGE_APPLICATION
-//
-//
-// #include <pge/olcPixelGameEngine.h>
-// #include <pge/extensions/olcPGEX_Shaders.h>
 
 
 #define OLC_GFX_OPENGL33
@@ -60,6 +46,13 @@
 #define OLC_PGEX_SHADERS
 #include <pge/extensions/olcPGEX_Shaders.h>
 
+// Using a transformed view to handle pan and zoom
+
+#define OLC_PGEX_TRANSFORMEDVIEW
+#include "pge/extensions/olcPGEX_TransformedView.h"
+
+#include <iostream>
+#include <sstream>
 #include <vector>
 #include <algorithm>
 #include <cmath> 
@@ -170,6 +163,13 @@ struct Line {
 	olc::vf2d b = {0.0, 0.0};
 };
 
+
+struct ImageSprites {
+	olc::Sprite* m_pImage = nullptr;
+	olc::Sprite* m_pQuantised = nullptr;
+	olc::Sprite* m_pDithered = nullptr;
+};
+
 //NOTE: From MaGetzUb discord message. Utility for saving sprite to a filepath on linux using libpng.
 inline bool SaveSprite(olc::Sprite* sprite, const std::string& path) {
 
@@ -248,9 +248,6 @@ struct Star {
 };
 
 
-
-
-
 class Kaleidoscope : public olc::PixelGameEngine
 {
 public:
@@ -267,10 +264,22 @@ public:
 	std::vector<QuadSquare> quadsquares;
 	std::vector<Star> stars;
 
+	std::vector<ImageSprites> imgsprites = {};
 
+	int target_sprite_index = 0;
 
+	olc::vf2d panrange = {0,0};
+	float scrollspeed = 3.0f;
+	float totaldistance = 0.0f;
+	olc::vf2d worldoffset = {0,0};
+
+	olc::TransformedView tv;
 	olc::Sprite* overlaysprite;
 	olc::Decal* overlaydecal;
+
+	olc::Sprite* test_image;
+
+	std::vector<olc::Sprite*> imagesprites;
 
 	bool expand = 1;
 	float pulse_freq = 0.0f;
@@ -279,7 +288,6 @@ public:
 	olc::Decal* maskdecal;
 	olc::vf2d cetrepos;
 
-
 	olc::vf2d uvA = {0.0f, 1.0f};
 	olc::vf2d uvB = {1.0f, 1.0f};
 	olc::vf2d uvC = {0.5f, 0.0f};
@@ -287,6 +295,7 @@ public:
 	std::vector<std::vector<olc::vf2d>> uv_sets;
 	const double PIEE = 3.14159265358979323846;
 	uint32_t nProcGen = 0;
+	std::vector<std::string> listb;	
 
 	Triangle baseTriangle;
 	Triangle* bt = &baseTriangle;
@@ -444,7 +453,6 @@ public:
 	}
 
 
-
 	void DrawStar(Star &star) {
 
 		const int NUM_STAR_POINTS = 5;
@@ -576,49 +584,7 @@ public:
 				if (spawn == 1) {
 					bgtriangles.push_back(t);
 				}
-				spawn=1;
-
-				// Square sq;
-				// sq.pos = {float(x), float(y)};
-				// sq.shapeb.layer = layerEnum[rndInt(0,3)];
-				// sq.shapeb.speed = {0, (float)rndDouble(0.1, 0.2)};
-				// float sqsize;
-				// switch(sq.shapeb.layer) {
-				// 	case BG: 
-				// 		sqsize = rndInt(1,4);
-				// 		sq.shapeb.fill = 1;
-				// 		spawn = rndInt(0, 6);
-				// 		break;
-				// 	case MID: 
-				// 		sqsize = rndInt(5,10);
-				// 		sq.shapeb.fill = rndInt(0,3);
-				// 		spawn = rndInt(0, 18);
-				// 		break;
-				// 	case FG: 
-				// 		sqsize = rndInt(30,50);
-				// 		sq.shapeb.fill = rndInt(0,2);
-				// 		spawn = rndInt(0, 36);
-				// 		break;
-				// }
-				//
-				// if (spawn == 1) {	
-				// 	sq.size = {sqsize, sqsize};
-				// 	sq.center = {sq.pos.x + (sq.size.x/2), sq.pos.y-(sq.size.x/2)};
-				// 	sq.diagonal =  sqrt((sq.size.x * sq.size.x) + (sq.size.y * sq.size.y));
-				//
-				// 	sq.shapeb.counterclockwiserotation = rndInt(0,12);
-				// 	sq.sprite = new olc::Sprite(sq.diagonal, sq.diagonal);
-				// 	sq.shapeb.colour = randomColour();
-				//
-				// 	DrawSquareSprite(sq);
-				// 	sq.decal = new olc::Decal(sq.sprite);
-				//
-				//
-				//
-				// 	squares.push_back(sq);
-				// }
-				// spawn=1;
-				
+				spawn=1;				
 
 				QuadSquare sq;
 				sq.pos1 = {float(x), float(y)};
@@ -778,6 +744,180 @@ public:
 		}
 	}
 
+	void AnimateShapes() {
+		for (Triangle &tri: bgtriangles) {	
+			MoveTriangle(tri, tri.center + tri.shapeb.speed);
+			RotateTriangle(tri);
+
+			if (tri.shapeb.fill == 1) {
+				FillTriangle(tri.x, tri.y, tri.z, tri.shapeb.colour);
+			} else {
+				DrawTriangle(tri.x, tri.y, tri.z, tri.shapeb.colour);
+			}
+			ReSpawnShape(tri);
+		}
+
+		for (Circle &c: circles) {
+			c.pos += c.shapeb.speed;
+			if (c.shapeb.fill == 1) {
+				FillCircle(c.pos, c.radius, c.shapeb.colour);
+			} else {
+				DrawCircle(c.pos, c.radius, c.shapeb.colour, c.mask);
+			}
+			ReSpawnCircle(c);
+		}
+
+		for (Star &star: stars) {
+			AnmiateStar(star);
+			ReSpawnStar(star);
+		}
+
+
+		for (QuadSquare &sq: quadsquares) {
+			MoveQuadSquare(sq, sq.center + sq.shapeb.speed);
+			RotateSquare(sq);
+			if (sq.shapeb.fill == 1) {
+				FillQuadRect(sq.pos1, sq.pos2, sq.pos3, sq.pos4, sq.shapeb.colour);
+			} else {
+				DrawQuadRect(sq.pos1, sq.pos2, sq.pos3, sq.pos4, sq.shapeb.colour);
+			}
+			RespawnQuadSquare(sq);
+		}
+	}
+
+	void ScrollImageInit(olc::Sprite &image, olc::Sprite &quantized, olc::Sprite &dithered) 
+	{
+
+		// These lambda functions output a new olc::Pixel based on
+		// the pixel it is given
+		auto Convert_RGB_To_Greyscale = [](const olc::Pixel in)
+		{
+			uint8_t greyscale = uint8_t(0.2162f * float(in.r) + 0.7152f * float(in.g) + 0.0722f * float(in.b));
+			return olc::Pixel(greyscale, greyscale, greyscale);
+		};
+
+
+		// Quantising functions
+		auto Quantise_Greyscale_1Bit = [](const olc::Pixel in)
+		{
+			return in.r < 128 ? olc::BLACK : olc::WHITE;
+		};
+
+		auto Quantise_Greyscale_NBit = [](const olc::Pixel in)
+		{
+			constexpr int nBits = 2;
+			constexpr float fLevels = (1 << nBits) - 1;
+			uint8_t c = uint8_t(std::clamp(std::round(float(in.r) / 255.0f * fLevels) / fLevels * 255.0f, 0.0f, 255.0f));
+			return olc::Pixel(c, c, c);
+		};
+
+		auto Quantise_RGB_NBit = [](const olc::Pixel in)
+		{
+			constexpr int nBits = 2;
+			constexpr float fLevels = (1 << nBits) - 1;
+			uint8_t cr = uint8_t(std::clamp(std::round(float(in.r) / 255.0f * fLevels) / fLevels * 255.0f, 0.0f, 255.0f));
+			uint8_t cb = uint8_t(std::clamp(std::round(float(in.g) / 255.0f * fLevels) / fLevels * 255.0f, 0.0f, 255.0f));
+			uint8_t cg = uint8_t(std::clamp(std::round(float(in.b) / 255.0f * fLevels) / fLevels * 255.0f, 0.0f, 255.0f));
+			return olc::Pixel(cr, cb, cg);
+		};
+
+		auto Quantise_RGB_CustomPalette = [](const olc::Pixel in)
+		{
+			std::array<olc::Pixel, 5> nShades = { olc::BLACK, olc::WHITE, olc::YELLOW, olc::MAGENTA, olc::CYAN };
+			
+			float fClosest = INFINITY;
+			olc::Pixel pClosest;
+
+			for (const auto& c : nShades)
+			{
+				float fDistance = float(
+					std::sqrt(
+						std::pow(float(c.r) - float(in.r), 2) +
+						std::pow(float(c.g) - float(in.g), 2) +
+						std::pow(float(c.b) - float(in.b), 2)));
+
+				if (fDistance < fClosest)
+				{
+					fClosest = fDistance;
+					pClosest = c;
+				}
+			}
+						
+			return pClosest;
+		};
+
+
+
+		std::transform(
+			image.pColData.begin(),
+			image.pColData.end(),
+			quantized.pColData.begin(), Quantise_RGB_NBit);
+
+		Dither_FloydSteinberg(&image, &dithered, Quantise_RGB_NBit);
+	}
+
+	void DrawImageSprite(std::unique_ptr<olc::Sprite> image)
+	{
+		Clear(olc::BLACK);
+		tv.DrawSprite({ 0,0 }, image.get());
+		//tv.DrawSprite({ 0,0 }, si.dithered.get());
+	}
+
+	
+	void Dither_FloydSteinberg(const olc::Sprite* pSource, olc::Sprite* pDest, std::function<olc::Pixel(const olc::Pixel)> funcQuantise)
+	{		
+		// The destination image is primed with the source image as the pixel
+		// values become altered as the algorithm executes
+		std::copy(pSource->pColData.begin(), pSource->pColData.end(), pDest->pColData.begin());		
+
+		// Iterate through each pixel from top left to bottom right, compare the pixel
+		// with that on the "allowed" list, and distribute that error to neighbours
+		// not yet computed
+		olc::vi2d vPixel;
+		for (vPixel.y = 0; vPixel.y < pSource->height; vPixel.y++)
+		{
+			for (vPixel.x = 0; vPixel.x < pSource->width; vPixel.x++)
+			{
+				// Grap and get nearest pixel equivalent from our allowed
+				// palette
+				olc::Pixel op = pDest->GetPixel(vPixel);
+				olc::Pixel qp = funcQuantise(op);
+
+				// olc::Pixels are "inconveniently" clamped to sensible ranges using an unsigned type...
+				// ...which means they cant be negative. This hampers us a tad here,
+				// so will resort to manual alteration using a signed type
+				int32_t error[3] =
+				{
+					op.r - qp.r,
+					op.g - qp.g,
+					op.b - qp.b
+				};
+				
+				// Set destination pixel with nearest match from quantisation function
+				pDest->SetPixel(vPixel, qp);
+
+				// Distribute Error - Using a little utility lambda to keep the messy code
+				// all in one place. It's important to allow pixels to temporarily become
+				// negative in order to distribute the error to the neighbours in both
+				// directions... value directions that is, not spatial!				
+				auto UpdatePixel = [&vPixel, &pDest, &error](const olc::vi2d& vOffset, const float fErrorBias)
+				{
+					olc::Pixel p = pDest->GetPixel(vPixel + vOffset);
+					int32_t k[3] = { p.r, p.g, p.b };
+					k[0] += int32_t(float(error[0]) * fErrorBias);
+					k[1] += int32_t(float(error[1]) * fErrorBias);
+					k[2] += int32_t(float(error[2]) * fErrorBias);
+					pDest->SetPixel(vPixel + vOffset, olc::Pixel(std::clamp(k[0], 0, 255), std::clamp(k[1], 0, 255), std::clamp(k[2], 0, 255)));
+				};
+
+				UpdatePixel({ +1,  0 }, 7.0f / 16.0f);
+				UpdatePixel({ -1, +1 }, 3.0f / 16.0f);
+				UpdatePixel({  0, +1 }, 5.0f / 16.0f);
+				UpdatePixel({ +1, +1 }, 1.0f / 16.0f);
+			}
+		}
+	}
+
 
 
 
@@ -788,10 +928,31 @@ public:
 	...........................
 	*/
 
+	void StartScrollImg(float scrollspeed, olc::vf2d relcenter, int imgheight) {
+	}
 
 	bool OnUserCreate() override
 	{
 		//SetPixelBlend(1.0);
+
+		tv.Initialise({ ScreenWidth(), ScreenHeight() });
+
+		std::string ilist = "/home/felix/kaleidoscope/imagelist.txt";
+		std::vector<std::string> lines;
+		std::ifstream inputFile(ilist);
+		std::string line;
+		while (std::getline(inputFile, line)) {
+			ImageSprites is;	
+			std::ostringstream fp;
+			fp << "/home/felix/Pictures/SpaceImages/";
+			fp << line;
+			lines.push_back(fp.str());
+			is.m_pImage = new olc::Sprite(fp.str());
+			is.m_pQuantised = new olc::Sprite(is.m_pImage->width, is.m_pImage->height);
+			is.m_pDithered = new olc::Sprite(is.m_pImage->width, is.m_pImage->height);
+			ScrollImageInit(*is.m_pImage, *is.m_pDithered, *is.m_pQuantised);
+			imgsprites.push_back(is);
+		}
 
 		uv_sets = {
 		    {uvA, uvB, uvC},
@@ -865,67 +1026,68 @@ public:
 		overlaydecal = new olc::Decal(overlaysprite);
 
 		SpawnShapes(rndInt(8, 32));
+
+
+		panrange = {(float)ScreenWidth()/2, (float)ScreenWidth()/2};
+
+		tv.StartPan(panrange);
+
+
+		worldoffset = tv.GetWorldOffset();
 		return true;
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-		SetDrawTarget(nullptr);
-		Clear(olc::BLACK);	
-		SetPixelMode(olc::Pixel::Mode::MASK);
+		// Handle Pan & Zoom using defaults middle mouse button
+		//SetDrawTarget(nullptr);
+		Clear(olc::BLANK);	
+		SetPixelMode(olc::Pixel::ALPHA);
 
+
+
+
+		// if (GetKey(olc::Key::Q).bHeld)
+		// {
+		// 	tv.DrawSprite({ 0,0 }, imgsprites[target_sprite_index].m_pQuantised);
+		// }
+		// else if (GetKey(olc::Key::W).bHeld)
+		// {
+		// 	tv.DrawSprite({ 0,0 }, imgsprites[target_sprite_index].m_pDithered);
+		// }
+
+
+		if (totaldistance == 0) {
+			olc::vf2d newoffs = {(float)ScreenWidth()/2, imgsprites[target_sprite_index].m_pImage->height - ((float)ScreenHeight())}; 
+			worldoffset = newoffs;
+			tv.SetWorldOffset(newoffs);
+			panrange = {((float)ScreenWidth()/2), ((float)ScreenHeight()/2)};
+			tv.StartPan(panrange);
+		}
+
+		totaldistance += scrollspeed;
+
+		if (totaldistance >= imgsprites[target_sprite_index].m_pImage->height - ((float)ScreenHeight())) {
+			totaldistance = 0;
+			target_sprite_index = rndInt(0, 6);
+		}
+
+		tv.UpdatePan({ScreenWidth()/2, (int)panrange.y + (int)totaldistance});		
+		
 		SetDrawTarget(newsp);
 		Clear(olc::BLANK);
-		//SetPixelMode(olc::Pixel::Mode::ALPHA);
+		SetPixelMode(olc::Pixel::Mode::ALPHA);
 
-		for (Triangle &tri: bgtriangles) {	
-			MoveTriangle(tri, tri.center + tri.shapeb.speed);
-			RotateTriangle(tri);
+		//tv.DrawSprite({ 0,0 }, imgsprites[target_sprite_index].m_pImage);
+		tv.DrawSprite({ 0,0 }, imgsprites[target_sprite_index].m_pQuantised);
 
-			if (tri.shapeb.fill == 1) {
-				FillTriangle(tri.x, tri.y, tri.z, tri.shapeb.colour);
-			} else {
-				DrawTriangle(tri.x, tri.y, tri.z, tri.shapeb.colour);
-			}
-			ReSpawnShape(tri);
-		}
-
-		for (Circle &c: circles) {
-			c.pos += c.shapeb.speed;
-			if (c.shapeb.fill == 1) {
-				FillCircle(c.pos, c.radius, c.shapeb.colour);
-			} else {
-				DrawCircle(c.pos, c.radius, c.shapeb.colour, c.mask);
-			}
-			ReSpawnCircle(c);
-		}
-
-		for (Star &star: stars) {
-			AnmiateStar(star);
-			ReSpawnStar(star);
-		}
-
-
-		for (QuadSquare &sq: quadsquares) {
-			MoveQuadSquare(sq, sq.center + sq.shapeb.speed);
-			RotateSquare(sq);
-			if (sq.shapeb.fill == 1) {
-				FillQuadRect(sq.pos1, sq.pos2, sq.pos3, sq.pos4, sq.shapeb.colour);
-			} else {
-				DrawQuadRect(sq.pos1, sq.pos2, sq.pos3, sq.pos4, sq.shapeb.colour);
-			}
-			RespawnQuadSquare(sq);
-		}
-
+		AnimateShapes();
 
 		SetDrawTarget(nullptr);
-		Clear(olc::BLACK);
+		Clear(olc::BLANK);
 
 
 		overlaydecal->Update();
-
-		// SetPixelMode(olc::Pixel::Mode::ALPHA);	
-
 		maskdecal->Update();
 
 		for (Triangle &t: triangles) {
@@ -947,6 +1109,9 @@ public:
 			std::replace(filename.begin(), filename.end(),' ','_');
 			SaveSprite(overlaysprite, filename);
 		}
+
+
+
  		return true;
 	}
 };
@@ -956,6 +1121,8 @@ int main()
 {
 	Kaleidoscope demo;
 	if (demo.Construct(1024, 960, 1, 1))
+
+	//if (demo.Construct(1280, 720, 1, 1))
 		demo.Start();
 	return 0;
 }

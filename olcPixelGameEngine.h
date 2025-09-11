@@ -5408,7 +5408,7 @@ namespace olc
 			glViewport(0, 0, gwa.width, gwa.height);
 
 			glSwapIntervalEXT = nullptr;
-			glSwapIntervalEXT = (glSwapInterval_t*)glXGetProcAddress((unsigned char*)"glXSwapIntervalEXT");
+			glSwapIntervalEXT = (glSwapInterval_t*)X11::glXGetProcAddress((unsigned char*)"glXSwapIntervalEXT");
 
 			if (glSwapIntervalEXT == nullptr && !bVSYNC)
 			{
@@ -5807,7 +5807,7 @@ typedef HGLRC glRenderContext_t;
 typedef X11::GLXContext glDeviceContext_t;
 typedef X11::GLXContext glRenderContext_t;
 //#define CALLSTYLE 
-#define OGL_LOAD(t, n) (t*)glXGetProcAddress((unsigned char*)#n);
+#define OGL_LOAD(t, n) (t*)X11::glXGetProcAddress((unsigned char*)#n);
 #endif
 
 //#if defined(__APPLE__)
