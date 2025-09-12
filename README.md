@@ -3,6 +3,9 @@ Software Kaleidoscope using Pixel Game Engine.
 Notes: 
 1. This requires a webcam to work.
 2. It will also therefore not work in WSL since last I checked WSL can't access device peripherals.
+3. The PGE and PGEX header files are included under /usr/include/pge/ on my system.
+4. I have used my forked version of the olcPixelGameEngine.h file that includes changes from this PR:
+https://github.com/OneLoneCoder/olcPixelGameEngine/pull/414/commits/441f901f5ded549612de7e1aac9efa9959e1e18d
 
 References:
 ProcGen / Randomizer utils: from: https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_ProcGen_Universe.cpp
@@ -16,6 +19,11 @@ NOTE: This will not work in WSL since last I checked WSL can't access device per
 
 ```bash
 g++ -o kaleidoscope pgekaleidoscope.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -lopencv_core -lopencv_videoio -lopencv_imgproc -std=c++20
+```
+Install Dependencies (for linux webcam api):
+```bash
+sudo apt-get update
+sudo apt-get install libopencv-dev
 ```
 
 Example images:
