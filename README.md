@@ -5,7 +5,8 @@ Notes:
 2. It will also therefore not work in WSL since last I checked WSL can't access device peripherals.
 3. The PGE and PGEX header files are included under /usr/include/pge/ on my system.
 4. I have used my forked version of the olcPixelGameEngine.h file that includes changes from this PR:
-[https://github.com/OneLoneCoder/olcPixelGameEngine/pull/414/commits/441f901f5ded549612de7e1aac9efa9959e1e18d]
+
+https://github.com/OneLoneCoder/olcPixelGameEngine/pull/414/commits/441f901f5ded549612de7e1aac9efa9959e1e18d
 
 References
 
@@ -15,11 +16,11 @@ https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProje
 
 Dithered and quantization techniques from:
 
-[https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_Dithering.cpp]
+https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_Dithering.cpp
 
 Hi-res Space telescope images from:
 
-[https://science.nasa.gov/mission/webb/]
+https://science.nasa.gov/mission/webb
 
 Thanks to MaGetzUb (from the onelonecoder discord community) for the SaveSprite screenshot function.
 
