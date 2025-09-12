@@ -10,10 +10,15 @@ Notes:
 References
 
 ProcGen / Randomizer utils from: 
-[https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_ProcGen_Universe.cpp]
-Dithered and quantization techniques from: 
+
+https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_ProcGen_Universe.cpp
+
+Dithered and quantization techniques from:
+
 [https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_Dithering.cpp]
+
 Hi-res Space telescope images from:
+
 [https://science.nasa.gov/mission/webb/]
 
 Thanks to MaGetzUb (from the onelonecoder discord community) for the SaveSprite screenshot function.
