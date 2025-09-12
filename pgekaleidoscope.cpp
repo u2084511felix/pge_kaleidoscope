@@ -254,9 +254,6 @@ public:
 	{
 		sAppName = "Kaleidoscope";
 	}
-
-	// OLC objects for rendering to a texture.
-
 	std::vector<Triangle> triangles;
 	std::vector<Triangle> bgtriangles;
 	std::vector<Circle> circles;
@@ -306,7 +303,7 @@ public:
 	int target_sprite = 0;
 
 	//Camera utils:
-	// OpenCV video capture object.	
+	// OpenCV video capture object.
 	olc::Sprite* pCameraFrame = nullptr;
 	olc::Decal* pCameraDecal = nullptr;
 	cv::VideoCapture cap;
@@ -1073,8 +1070,7 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-		// Handle Pan & Zoom using defaults middle mouse button
-		//SetDrawTarget(nullptr);
+
 		Clear(olc::BLANK);	
 		SetPixelMode(olc::Pixel::ALPHA);
 
@@ -1176,8 +1172,8 @@ public:
 			DrawStringDecal({10, 130}, "into the kaleidoscope viewport", olc::WHITE, {2.0f, 2.0f});
 			DrawStringDecal({10, 160}, "Press NumPad4 to dithered draw space telescope images", olc::WHITE, {2.0f, 2.0f});	
 			DrawStringDecal({10, 190}, "into the kaleidoscope viewport", olc::WHITE, {2.0f, 2.0f});
-			DrawStringDecal({10, 210}, "Press NumPad5 to dithered draw quantized space telescope images", olc::WHITE, {2.0f, 2.0f});	
-			DrawStringDecal({10, 240}, "into the kaleidoscope viewport", olc::WHITE, {2.0f, 2.0f});
+			DrawStringDecal({10, 220}, "Press NumPad5 to dithered draw quantized space telescope images", olc::WHITE, {2.0f, 2.0f});	
+			DrawStringDecal({10, 250}, "into the kaleidoscope viewport", olc::WHITE, {2.0f, 2.0f});
 
 		}
 		overlaydecal->UpdateSprite();
@@ -1188,10 +1184,13 @@ public:
 			time_t now;
 			time(&now);
 			std::string dateandtime = ctime(&now);
+			std::replace( dateandtime.begin(), dateandtime.end(), ':', '_');
+			std::replace( dateandtime.begin(), dateandtime.end(), ' ', '_');
+			std::replace( dateandtime.begin(), dateandtime.end(), '$', '_');
+			std::replace( dateandtime.begin(), dateandtime.end(), '\n', '_');
 			std::string filename = "./Screenshots/pge_kaleidoscope_";
 			filename += dateandtime;
 			filename += ".png";
-			std::replace(filename.begin(), filename.end(),' ','_');
 			SaveSprite(overlaysprite, filename);
 		}
 
@@ -1217,8 +1216,6 @@ int main()
 {
 	Kaleidoscope demo;
 	if (demo.Construct(1024, 960, 1, 1))
-
-	//if (demo.Construct(1280, 720, 1, 1))
 		demo.Start();
 	return 0;
 }
