@@ -1,12 +1,18 @@
-Part of my submission for the OneLoneCoder CodeJam 2025.
+Software Kaleidoscope using Pixel Game Engine.
 
-Using Pixel Game Engine.
-(Imported to my /usr/include/pge/ library);
+Note: This requires a webcam to work.
+
+References:
+
+ProcGen / Randomizer utils: from: https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_ProcGen_Universe.cpp
+Dithered and quantization techniques from: https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_Dithering.cpp 
+Hi-res Space telescope images from https://science.nasa.gov/mission/webb/
 
 Linux Build command:
+NOTE: This will not work in WSL since last I checked WSL can't access device peripherals (e.g. webcam).
 
 ```bash
-g++ -o pgekaleidoscope pgekaleidoscope.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++20
+g++ -o kaleidoscope pgekaleidoscope.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -lopencv_core -lopencv_videoio -lopencv_imgproc -std=c++20
 ```
 
 Example image:

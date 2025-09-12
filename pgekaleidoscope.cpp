@@ -31,7 +31,6 @@
 */
 
 /*TODO:
- * 2. Add live video feed as kaleidoscope source.
  * 4. Experiement with different shapes and types of kaleidoscope (using sources foudn in bookmarked research).
  * 5. Add sound spectrum visual feedback to shapes and kaleidoscope effects.
  * 6. Add glasslike wireframe to kaleidoscope edges with a clamping texture sampling method.
@@ -41,7 +40,7 @@
 
 #define OLC_GFX_OPENGL33
 #define OLC_PGE_APPLICATION
-#include "olcPixelGameEngine.h"
+#include "pge/olcPixelGameEngine.h"
 
 #define OLC_PGEX_SHADERS
 #include <pge/extensions/olcPGEX_Shaders.h>
@@ -50,7 +49,7 @@
 
 #define OLC_PGEX_TRANSFORMEDVIEW
 #include "pge/extensions/olcPGEX_TransformedView.h"
-
+#include <opencv2/videoio.hpp>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -256,6 +255,8 @@ public:
 		sAppName = "Kaleidoscope";
 	}
 
+	// OLC objects for rendering to a texture.
+
 	std::vector<Triangle> triangles;
 	std::vector<Triangle> bgtriangles;
 	std::vector<Circle> circles;
@@ -300,8 +301,18 @@ public:
 	Triangle baseTriangle;
 	Triangle* bt = &baseTriangle;
 	Triangle borderTriangle;
-
 	const int max_radius = 5; 
+
+	int target_sprite = 0;
+
+	//Camera utils:
+	// OpenCV video capture object.	
+	olc::Sprite* pCameraFrame = nullptr;
+	olc::Decal* pCameraDecal = nullptr;
+	cv::VideoCapture cap;
+	int nCamWidth = 640;
+	int nCamHeight = 480;
+
 
 public:
 	olc::Pixel randomColour(){
@@ -314,22 +325,20 @@ public:
 	//NOTE: ...........................
 	//.................................
 	//    ProcGen / Randomizer utils: 
+	//    from: https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_ProcGen_Universe.cpp
 	//.................................
 	//.................................
 
 	double rndDouble(double min, double max)
 	{
 		return ((double)rnd() / (double)(0x7FFFFFFF)) * (max - min) + min;
-	}
+	};
 
 	int rndInt(int min, int max)
 	{
 		return (rnd() % (max - min)) + min;
-	}
+	};
 	
-	// Modified from this for 64-bit systems:
-	// https://lemire.me/blog/2019/03/19/the-fastest-conventional-random-number-generator-that-can-pass-big-crush/
-	// Now I found the link again - Also, check out his blog, it's a fantastic resource!
 	uint32_t rnd()
 	{
 		nProcGen += 0xe120fc15;
@@ -339,14 +348,14 @@ public:
 		tmp = (uint64_t)m1 * 0x12fad5c9;
 		uint32_t m2 = (tmp >> 32) ^ tmp;
 		return m2;
-	}
+	};
 
 
 	//NOTE: ...........................
 	//.................................
 	//    Transformation Functions 
 	//.................................
-	//.................................
+	//................................
 
 	void TriangleCoords(Triangle &triangle){
 		//Make Triangle Equilateral
@@ -448,10 +457,11 @@ public:
 		square.pos4 = d;
 	};
 
+
+
 	int hex_distance(olc::vi2d h) {
 	    return (std::abs(h.x) + std::abs(h.y) + std::abs(-h.x - h.y)) / 2;
-	}
-
+	};
 
 	void DrawStar(Star &star) {
 
@@ -495,7 +505,7 @@ public:
 		for (size_t i = 0; i < star.lines.size(); ++i) {
 			DrawLine(star.lines[i].a, star.lines[i].b, star.shapeb.colour);
 		}
-	}
+	};
 
 	void AnmiateStar(Star &star) {
 
@@ -547,7 +557,7 @@ public:
 		for (size_t i = 0; i < star.lines.size(); ++i) {
 			DrawLine(star.lines[i].a, star.lines[i].b, star.shapeb.colour);
 		}
-	}
+	};
 
 	void SpawnShapes(int random_seed) {
 		for (int x = 0; x < ScreenWidth(); x += random_seed) {
@@ -699,8 +709,7 @@ public:
 			newc = {newx, ((0 - min))};
 			MoveTriangle(triangle, newc);
 		}
-	}
-
+	};
 
 	void RespawnQuadSquare(QuadSquare &sq) {
 		olc::vf2d newc = {0,0};
@@ -712,7 +721,7 @@ public:
 			newc = {newx, ((0 - min))};
 			MoveQuadSquare(sq, newc);
 		}
-	}
+	};
 
 	void ReSpawnCircle(Circle &circle) {
 		olc::vf2d newc = {0,0};
@@ -722,7 +731,7 @@ public:
 			newc = {newx, ((0 - circle.radius))};
 			circle.pos = newc;
 		}
-	}
+	};
 
 	void ReSpawnStar(Star &star) {
 		olc::vf2d newc = {0,0};
@@ -732,7 +741,7 @@ public:
 			newc = {newx, ((0 - star.oradius))};
 			star.center = newc;
 		}
-	}
+	};
 
 	void ReSpawnRect(Square &square) {
 		olc::vf2d newc = {0,0};
@@ -742,7 +751,7 @@ public:
 			newc = {newx, ((0 - square.size.y))};
 			square.pos = newc;
 		}
-	}
+	};
 
 	void AnimateShapes() {
 		for (Triangle &tri: bgtriangles) {	
@@ -783,8 +792,10 @@ public:
 			}
 			RespawnQuadSquare(sq);
 		}
-	}
+	};
 
+
+	//NOTE: From https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_Dithering.cpp 
 	void ScrollImageInit(olc::Sprite &image, olc::Sprite &quantized, olc::Sprite &dithered) 
 	{
 
@@ -854,16 +865,10 @@ public:
 			quantized.pColData.begin(), Quantise_RGB_NBit);
 
 		Dither_FloydSteinberg(&image, &dithered, Quantise_RGB_NBit);
-	}
+	};
 
-	void DrawImageSprite(std::unique_ptr<olc::Sprite> image)
-	{
-		Clear(olc::BLACK);
-		tv.DrawSprite({ 0,0 }, image.get());
-		//tv.DrawSprite({ 0,0 }, si.dithered.get());
-	}
 
-	
+	//NOTE: From https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_Dithering.cpp 
 	void Dither_FloydSteinberg(const olc::Sprite* pSource, olc::Sprite* pDest, std::function<olc::Pixel(const olc::Pixel)> funcQuantise)
 	{		
 		// The destination image is primed with the source image as the pixel
@@ -916,20 +921,48 @@ public:
 				UpdatePixel({ +1, +1 }, 1.0f / 16.0f);
 			}
 		}
-	}
+	};
 
 
+	
+	bool setup_cam() {
+		cap.open(0);
+		if (!cap.isOpened())
+		{
+			std::cerr << "ERROR: Could not open camera device." << std::endl;
+			return false;
+		}
 
+		cap.set(cv::CAP_PROP_FRAME_WIDTH, nCamWidth);
+		cap.set(cv::CAP_PROP_FRAME_HEIGHT, nCamHeight);
+		
+		pCameraFrame = new olc::Sprite(nCamWidth, nCamHeight);
+		pCameraDecal = new olc::Decal(pCameraFrame);
+		return true;
+	};
 
-	/*NOTE::...................
-	...........................
-		 Shader Utils
-	...........................
-	...........................
-	*/
+	bool RenderCameraFrame(){
+		cv::Mat frame;
+		cap.read(frame); 
 
-	void StartScrollImg(float scrollspeed, olc::vf2d relcenter, int imgheight) {
-	}
+		if (frame.empty())
+		{
+			return 1;
+		}
+		
+		// --- Update the Sprite with the new frame data ---
+		for (int y = 0; y < frame.rows; y++)
+		{
+			for (int x = 0; x < frame.cols; x++)
+			{
+				cv::Vec3b color = frame.at<cv::Vec3b>(y, x);
+				pCameraFrame->SetPixel(x, y, olc::Pixel(color[2], color[1], color[0])); // R, G, B
+			}
+		}
+
+		return 0;
+	};
+
 
 	bool OnUserCreate() override
 	{
@@ -937,14 +970,17 @@ public:
 
 		tv.Initialise({ ScreenWidth(), ScreenHeight() });
 
-		std::string ilist = "/home/felix/kaleidoscope/imagelist.txt";
+		if (!setup_cam()) return false;
+
+		std::string ilist = "imagelist.txt";
 		std::vector<std::string> lines;
 		std::ifstream inputFile(ilist);
 		std::string line;
 		while (std::getline(inputFile, line)) {
 			ImageSprites is;	
 			std::ostringstream fp;
-			fp << "/home/felix/Pictures/SpaceImages/";
+			//NOTE:: Images take from https://science.nasa.gov/mission/webb/
+			fp << "SpaceImages/";
 			fp << line;
 			lines.push_back(fp.str());
 			is.m_pImage = new olc::Sprite(fp.str());
@@ -1027,11 +1063,9 @@ public:
 
 		SpawnShapes(rndInt(8, 32));
 
-
 		panrange = {(float)ScreenWidth()/2, (float)ScreenWidth()/2};
 
 		tv.StartPan(panrange);
-
 
 		worldoffset = tv.GetWorldOffset();
 		return true;
@@ -1043,19 +1077,6 @@ public:
 		//SetDrawTarget(nullptr);
 		Clear(olc::BLANK);	
 		SetPixelMode(olc::Pixel::ALPHA);
-
-
-
-
-		// if (GetKey(olc::Key::Q).bHeld)
-		// {
-		// 	tv.DrawSprite({ 0,0 }, imgsprites[target_sprite_index].m_pQuantised);
-		// }
-		// else if (GetKey(olc::Key::W).bHeld)
-		// {
-		// 	tv.DrawSprite({ 0,0 }, imgsprites[target_sprite_index].m_pDithered);
-		// }
-
 
 		if (totaldistance == 0) {
 			olc::vf2d newoffs = {(float)ScreenWidth()/2, imgsprites[target_sprite_index].m_pImage->height - ((float)ScreenHeight())}; 
@@ -1078,23 +1099,87 @@ public:
 		Clear(olc::BLANK);
 		SetPixelMode(olc::Pixel::Mode::ALPHA);
 
-		//tv.DrawSprite({ 0,0 }, imgsprites[target_sprite_index].m_pImage);
-		tv.DrawSprite({ 0,0 }, imgsprites[target_sprite_index].m_pQuantised);
 
-		AnimateShapes();
+		if (GetKey(olc::Key::NP0).bPressed)
+		{
+			target_sprite = 0;
+		}
+
+		if (GetKey(olc::Key::NP1).bPressed)
+		{
+			target_sprite = 1;
+		}
+
+		if (GetKey(olc::Key::NP2).bPressed)
+		{
+
+			target_sprite = 2;
+		}
+
+		if (GetKey(olc::Key::NP3).bPressed)
+		{
+			target_sprite = 3;
+		}
+
+		if (GetKey(olc::Key::NP4).bPressed)
+		{
+			target_sprite = 4;
+		}
+
+		if (GetKey(olc::Key::NP5).bPressed)
+		{
+			target_sprite = 5;
+		}
+
+		if (target_sprite == 1) {
+			bool render;
+			render = RenderCameraFrame();
+			
+			if (render){
+				return 1;
+			}
+			DrawSprite({0, 0}, pCameraFrame);
+		}
+
+		if (target_sprite == 2) {
+			AnimateShapes();
+		}
+
+		if (target_sprite == 3) {
+			tv.DrawSprite({ 0,0 }, imgsprites[target_sprite_index].m_pImage);
+		}
+		if (target_sprite == 4) {
+			tv.DrawSprite({ 0,0 }, imgsprites[target_sprite_index].m_pDithered);
+		}
+		if (target_sprite == 5) {
+			tv.DrawSprite({ 0,0 }, imgsprites[target_sprite_index].m_pQuantised);
+		}
+
+
 
 		SetDrawTarget(nullptr);
 		Clear(olc::BLANK);
 
-
-		overlaydecal->Update();
 		maskdecal->Update();
 
-		for (Triangle &t: triangles) {
-			DrawPolygonDecal(maskdecal, t.coords, t.texture);
-			DrawTriangle(t.x, t.y, t.z, olc::VERY_DARK_RED);
-		}
+		if (target_sprite != 0){
+			for (Triangle &t: triangles) {
+				DrawPolygonDecal(maskdecal, t.coords, t.texture);
+				DrawTriangle(t.x, t.y, t.z, olc::VERY_DARK_RED);
+			};
+		} else {
+			Clear(olc::DARK_BLUE);
+			DrawStringDecal({10, 10}, "Press NumPad0 to come back here.", olc::WHITE, {2.0f, 2.0f});
+			DrawStringDecal({10, 40}, "Press NumPad1 show webcam feed", olc::WHITE, {2.0f, 2.0f});
+			DrawStringDecal({10, 70}, "Press NumPad2 to draw shapes into kaleidoscope viewport.", olc::WHITE, {2.0f, 2.0f});
+			DrawStringDecal({10, 100}, "Press NumPad3 to draw space telescope images", olc::WHITE, {2.0f, 2.0f});	
+			DrawStringDecal({10, 130}, "into the kaleidoscope viewport", olc::WHITE, {2.0f, 2.0f});
+			DrawStringDecal({10, 160}, "Press NumPad4 to dithered draw space telescope images", olc::WHITE, {2.0f, 2.0f});	
+			DrawStringDecal({10, 190}, "into the kaleidoscope viewport", olc::WHITE, {2.0f, 2.0f});
+			DrawStringDecal({10, 210}, "Press NumPad5 to dithered draw quantized space telescope images", olc::WHITE, {2.0f, 2.0f});	
+			DrawStringDecal({10, 240}, "into the kaleidoscope viewport", olc::WHITE, {2.0f, 2.0f});
 
+		}
 		overlaydecal->UpdateSprite();
 
 		if(GetKey(olc::Key::INS).bPressed) {
@@ -1110,10 +1195,21 @@ public:
 			SaveSprite(overlaysprite, filename);
 		}
 
-
-
  		return true;
 	}
+
+	bool OnUserDestroy() override
+	{
+		delete pCameraDecal;
+		delete pCameraFrame;
+
+		if(cap.isOpened())
+		{
+			cap.release();
+		}
+		return true;
+	}
+
 };
 
 
