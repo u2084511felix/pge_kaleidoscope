@@ -1,6 +1,13 @@
 ## Software Kaleidoscope using Pixel Game Engine.
 
-There are 3 types of software kaleidoscope in this repo:
+This idea for this project came about from the recent [olc 2025 codejam](https://itch.io/jam/olc-codejam-2025), whose theme was shapes. Unfortunately I was not able to finish my submission in time, but I have carried on with it anyway, because I really enjoyed using the [PixelGameEngine](https://github.com/OneLoneCoder/olcPixelGameEngine/tree/master), and I have always loved kaleidoscopes since childhood having been giften one of these really cool 
+[Illusion Kaleidoscopes](https://www.worthpoint.com/worthopedia/illusion-kaleidoscope-blue-red-2497686475).
+  
+With the PixelGameEngine draw routines it's fairly straightforward to render and animate shapes in 2D coordinate space, so I thought it might be a cool experiment to see if I could recreate the falling glitter / glittery shapes used in the viscous liquid tube of the Illusion Kaleidoscopes, and then attempt to render the visible area of  a center triangle to a kaleidoscope viewport texture with which tesselations can be drawn to the rest of the screen, creating a keleidoscope effect. [See research material for references](https://discoverycentermd.org/news/kaleidoscope/).
+
+This was fairly successful, and since the PixelGameEngine can draw frames from webcams, and load images, I thought it would be cool to try using those as the source images for the kaleidoscope viewport texture.
+
+Currently, there are 3 types of software kaleidoscope in this repo:
 - Camera Kaleidoscope: [camerakaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/camerakaleidoscope.cpp)  
 - Image Kaleidoscope [imagekaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/imagekaleidoscope.cpp)  
 - Shapes Kaleidoscope [shapeskaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/shapeskaleidoscope.cpp)
