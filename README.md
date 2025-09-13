@@ -1,34 +1,77 @@
-Software Kaleidoscope using Pixel Game Engine.
+#Software Kaleidoscope using Pixel Game Engine.
 
-Notes: 
-1. This requires a webcam to work.
-2. It will also therefore not work in WSL since last I checked WSL can't access device peripherals.
-3. The PGE and PGEX header files are included under /usr/include/pge/ on my system.
-4. I have used my forked version of the olcPixelGameEngine.h file that includes changes from this PR:
+There are 3 types of software kaleidoscope in this repo:
+Camera Kaleidoscope (camerakaleidoscope.cpp)
+Image Kaleidoscope (imagekaleidoscope.cpp)
+Shapes Kaleidoscope (shapeskaleidoscope.cpp)
+
+Each can be built individually into standalone binaries, or you can build the multikaleidoscope.cpp which contains each kaleidoscope type with an interactive switch to change between each kaleidoscope type.
+
+At some point I would like to create an emscripten build for some or all of these kaleidoscopes.
+
+###Notes: 
+1. The camerakaleidoscope.cpp (and multikaleidoscope.cpp) requires a working webcam or usb cam to work. In addition they currently only work on linux and require the opencv webcam api to build and run (see dependencies for install command).
+2. The PGE and PGEX header files are included under /usr/include/pge/ on my system. They are required as buld dependencies and you may need to clone them from github (see dependencies for link) and adjust the include paths in the kaleidoscope source files relative to where you clone them to.
+3. The shapeskaleidoscope.cpp (and multikaleidoscope.cpp) uses my own forked version of the olcPixelGameEngine.h which include changes from this PR:
 
 https://github.com/OneLoneCoder/olcPixelGameEngine/pull/414/commits/441f901f5ded549612de7e1aac9efa9959e1e18d
 
-References
+##References
 
-ProcGen / Randomizer utils from: 
+###ProcGen / Randomizer utils from: 
 
 https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_ProcGen_Universe.cpp
 
-Dithered and quantization techniques from:
+###Dithered and quantization techniques from:
 
 https://github.com/OneLoneCoder/Javidx9/blob/master/PixelGameEngine/SmallerProjects/OneLoneCoder_PGE_Dithering.cpp
 
-Hi-res Space telescope images from:
+###Hi-res Space telescope images from:
 
 https://science.nasa.gov/mission/webb
 
-Thanks to MaGetzUb (from the onelonecoder discord community) for the SaveSprite screenshot function.
+##Research Material:
+https://discoverycentermd.org/news/kaleidoscope/
+https://optica.machorro.net/Optica/SciAm/Kaleidoscope/1985-12-body.html
+https://en.etudes.ru/etudes/kaleidoscope/
+https://en.m.wikipedia.org/wiki/File:Hyperbolic_kaleidoscopes.png
+https://en.wikipedia.org/wiki/Triangle_group
+https://en.wikipedia.org/wiki/Triangular_tiling
+https://en.wikipedia.org/wiki/Uniform_tilings_in_hyperbolic_plane#(3_2_2_2)
+http://mathengaged.org/resources/activities/art-projects/tessellations/
+https://brewstersociety.com/kaleidoscope-university/types-of-scopes/
+https://www.worthpoint.com/worthopedia/wildewood-creative-products-unique-1819630333
 
-Linux Build command:
+Thanks to MaGetzUb (from the onelonecoder discord community) for the SaveSprite screenshot function.
+Also thanks to Talon (also from the onelonecoder discord community) for a lot of help with the kaleidoscope texture mapping, PGE decal draw procedures, and some missing C++ keywords!
+
+##Build commands:
+
 ```bash
-g++ -o kaleidoscope pgekaleidoscope.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -lopencv_core -lopencv_videoio -lopencv_imgproc -std=c++20
+##Multi Kaleidoscope
+g++ -o multikaleidoscope multikaleidoscope.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -lopencv_core -lopencv_videoio -lopencv_imgproc -std=c++20
 ```
-Install Dependencies (for linux webcam api):
+
+```bash
+##Camera Kaleidoscope
+g++ -o camkaleidoscope camerakaleidoscope.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -lopencv_core -lopencv_videoio -lopencv_imgproc -std=c++20
+```
+
+```bash
+##Shapes Kaleidoscope
+g++ -o shapeskaleidoscope shapeskaleidoscope.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++20
+```
+
+```bash
+##Image Kaleidoscope
+g++ -o imagekaleidoscope imagekaleidoscope.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++20
+```
+
+##Dependencies:
+https://github.com/OneLoneCoder/olcPixelGameEngine/blob/master/olcPixelGameEngine.h
+https://github.com/OneLoneCoder/olcPixelGameEngine/blob/master/extensions/olcPGEX_TransformedView.h
+https://github.com/OneLoneCoder/olcPixelGameEngine/pull/414/commits/441f901f5ded549612de7e1aac9efa9959e1e18d
+
 ```bash
 sudo apt-get update
 sudo apt-get install libopencv-dev
