@@ -5,14 +5,14 @@ There are 3 types of software kaleidoscope in this repo:
 - Image Kaleidoscope [imagekaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/imagekaleidoscope.cpp)  
 - Shapes Kaleidoscope [shapeskaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/shapeskaleidoscope.cpp)
 
-Each can be built individually into standalone binaries, or you can build the [multikaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/multikaleidoscope.cpp) which contains each kaleidoscope type with an interactive switch to change between kaleidoscopes during runtime.
+Each can be [built](https://github.com/u2084511felix/pge_kaleidoscope/tree/main?tab=readme-ov-file#build-commands) individually into standalone binaries, or you can build the [multikaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/multikaleidoscope.cpp) which contains each kaleidoscope type with an interactive switch to change between kaleidoscopes during runtime.
 
 At some point I would like to create an emscripten build for some or all of these kaleidoscopes.
 
 ### Notes 
-1. The [camerakaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/camerakaleidoscope.cpp) and [multikaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/multikaleidoscope.cpp) require a working webcam or usb cam to work. In addition they currently only work on linux and require the opencv webcam api to build and run (see dependencies for install command).
-2. The PGE and PGEX header files are included under /usr/include/pge/ on my system. They are required as buld dependencies and you may need to clone them from github (see dependencies for link) and adjust the include paths in the kaleidoscope source files relative to where you clone them to.
-3. The [shapeskaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/shapeskaleidoscope.cpp) and [multikaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/multikaleidoscope.cpp) use my own forked version of the olcPixelGameEngine.h which include changes from this [Pull Request](https://github.com/OneLoneCoder/olcPixelGameEngine/pull/414/commits/441f901f5ded549612de7e1aac9efa9959e1e18d)
+1. The [camerakaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/camerakaleidoscope.cpp) and [multikaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/multikaleidoscope.cpp) require a working webcam or usb cam to work. In addition they currently only work on linux and require the opencv webcam api to build and run [(see dependencies for install command)](https://github.com/u2084511felix/pge_kaleidoscope/tree/main?tab=readme-ov-file#dependencies).
+2. The PGE and PGEX header files are included under /usr/include/pge/ on my system. They are required as buld dependencies and you may need to clone them from github [see dependencies for link](https://github.com/u2084511felix/pge_kaleidoscope/tree/main?tab=readme-ov-file#dependencies) and adjust the include paths in the kaleidoscope source files relative to where you clone them to.
+3. The [shapeskaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/shapeskaleidoscope.cpp) and [multikaleidoscope.cpp](https://github.com/u2084511felix/pge_kaleidoscope/blob/main/multikaleidoscope.cpp) use my own [forked version of the olcPixelGameEngine.h](https://github.com/u2084511felix/olcPixelGameEngine/blob/drawquadrect/olcPixelGameEngine.h) which include changes from this [Pull Request](https://github.com/OneLoneCoder/olcPixelGameEngine/pull/414/commits/441f901f5ded549612de7e1aac9efa9959e1e18d)
 
 ## References
 
